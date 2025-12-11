@@ -69,29 +69,46 @@ def get_bertopic_model() -> Optional[Any]:
         return None
 
 
+@st.cache_resource
+def train_bertopic_cached(texts_tuple: tuple) -> tuple:
+     """
+     缓存版BERTopic训练（只训练一次，结果保存）
+     
+     参数：texts_tuple - 文本列表的元组版本（便于缓存）
+     返回: (topics, probabilities, model)
+     """
+     if not BERTOPIC_AVAILABLE:
+         st.warning("BERTopic未安装，跳过高级主题分析")
+         return None, None, None
+     
+     try:
+         with st.spinner("🤖 正在训练BERTopic模型，提取隐藏主题..."):
+             model = get_bertopic_model()
+             if model is None:
+                 return None, None, None
+             
+             texts = list(texts_tuple)
+             topics, probs = model.fit_transform(texts)
+         return topics, probs, model
+     except Exception as e:
+         st.warning(f"主题提取失败: {e}")
+         return None, None, None
+
+
 def train_bertopic(texts: List[str], model: Optional[Any] = None) -> tuple:
-    """
-    训练BERTopic模型提取隐藏主题
-    
-    返回: (topics, probabilities, model)
-    """
-    if not BERTOPIC_AVAILABLE:
-        st.warning("BERTopic未安装，跳过高级主题分析")
-        return None, None, None
-    
-    if model is None:
-        model = get_bertopic_model()
-    
-    if model is None:
-        return None, None, None
-    
-    try:
-        with st.spinner("🤖 正在训练BERTopic模型，提取隐藏主题..."):
-            topics, probs = model.fit_transform(texts)
-        return topics, probs, model
-    except Exception as e:
-        st.warning(f"主题提取失败: {e}")
-        return None, None, None
+     """
+     训练BERTopic模型提取隐藏主题（自动缓存版本）
+     
+     返回: (topics, probabilities, model)
+     """
+     if not BERTOPIC_AVAILABLE:
+         st.warning("BERTopic未安装，跳过高级主题分析")
+         return None, None, None
+     
+     # 转换为元组便于streamlit缓存
+     texts_tuple = tuple(texts)
+     
+     return train_bertopic_cached(texts_tuple)
 
 
 def visualize_topics_2d(model: Optional[Any], topics: Optional[np.ndarray]) -> Optional[object]:
