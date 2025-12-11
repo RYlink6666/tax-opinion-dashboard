@@ -65,7 +65,7 @@ def create_distribution_pie(values, labels, title="", hole=0.3):
     return fig
 
 
-def create_horizontal_bar(values, labels, title="", colorscale='Blues'):
+def create_horizontal_bar(labels, values, title="", colorscale='Blues'):
     """创建横向柱状图
     
     用于展示：
@@ -74,8 +74,8 @@ def create_horizontal_bar(values, labels, title="", colorscale='Blues'):
     - Top N统计
     
     参数：
-        values: 数值列表或Series.values
         labels: 标签列表（中文）
+        values: 数值列表或Series.values
         title: 图表标题
         colorscale: 颜色方案（Blues/Reds/Viridis等）
     
@@ -84,20 +84,24 @@ def create_horizontal_bar(values, labels, title="", colorscale='Blues'):
         topic_labels = [translate_topic(k) for k in topic_dist.index]
         
         fig = create_horizontal_bar(
-            topic_dist.values,
             topic_labels,
+            topic_dist.values,
             title="话题热度排行",
             colorscale='Blues'
         )
     """
+    # 确保values是数值类型的列表
+    values_list = list(values) if hasattr(values, '__iter__') else [values]
+    
     fig = go.Figure(data=[go.Bar(
         y=labels,
-        x=values,
+        x=values_list,
         orientation='h',
         marker=dict(
-            color=values,
+            color=values_list,
             colorscale=colorscale,
-            showscale=True
+            showscale=True,
+            line=dict(width=0)  # 移除边框，防止渲染问题
         )
     )])
     fig.update_layout(

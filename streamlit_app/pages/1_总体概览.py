@@ -132,7 +132,8 @@ with col1:
     fig = create_horizontal_bar(
         topic_labels,
         topic_dist.values,
-        title="话题热度（Top 6）"
+        title="话题热度（Top 6）",
+        colorscale='Blues'
     )
     st.plotly_chart(fig, use_container_width=True)
     
@@ -147,7 +148,8 @@ with col2:
     fig = create_horizontal_bar(
         actor_labels,
         actor_dist.values,
-        title="参与方热度（Top 6）"
+        title="参与方热度（Top 6）",
+        colorscale='Blues'
     )
     st.plotly_chart(fig, use_container_width=True)
     
