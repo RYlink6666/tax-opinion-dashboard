@@ -77,7 +77,7 @@ def create_horizontal_bar(labels, values, title="", colorscale='Blues'):
         labels: 标签列表（中文）
         values: 数值列表或Series.values
         title: 图表标题
-        colorscale: 颜色方案（Blues/Reds/Viridis等）
+        colorscale: 颜色方案（本参数已弃用，自动使用渐进蓝色）
     
     用法：
         topic_dist = df['topic'].value_counts().head(6)
@@ -86,29 +86,33 @@ def create_horizontal_bar(labels, values, title="", colorscale='Blues'):
         fig = create_horizontal_bar(
             topic_labels,
             topic_dist.values,
-            title="话题热度排行",
-            colorscale='Blues'
+            title="话题热度排行"
         )
     """
     # 确保values是数值类型的列表
-    values_list = list(values) if hasattr(values, '__iter__') else [values]
+    values_list = [float(v) for v in values] if hasattr(values, '__iter__') else [float(values)]
+    
+    # 生成颜色列表（从浅蓝到深蓝）
+    n = len(values_list)
+    colors = [f'rgba(31, 119, 180, {0.4 + 0.4 * i / max(1, n-1)})' for i in range(n)]
     
     fig = go.Figure(data=[go.Bar(
         y=labels,
         x=values_list,
         orientation='h',
         marker=dict(
-            color=values_list,
-            colorscale=colorscale,
-            showscale=True,
-            line=dict(width=0)  # 移除边框，防止渲染问题
-        )
+            color=colors,
+            line=dict(width=0)
+        ),
+        text=[str(int(v)) for v in values_list],
+        textposition='outside'
     )])
     fig.update_layout(
-        height=350,
+        height=max(350, 30 * len(labels)),
         title=title if title else "",
         xaxis_title="讨论数",
-        yaxis_title=""
+        yaxis_title="",
+        margin=dict(l=100, r=50, t=50, b=50)
     )
     return fig
 
