@@ -68,9 +68,9 @@ with col1:
 st.markdown("---")
 st.subheader("🎯 快速导航：我想...")
 
-col1, col2 = st.columns(2)
+nav_col1, nav_col2 = st.columns(2)
 
-with col1:
+with nav_col1:
     st.markdown("""
     ### 快速开始
     
@@ -80,7 +80,7 @@ with col1:
     - **📈 比较不同模式** → P4 模式分析
     """)
 
-with col2:
+with nav_col2:
     st.markdown("""
     ### 深度分析
     
