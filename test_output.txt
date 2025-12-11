@@ -1,0 +1,73 @@
+2025-12-11 14:22:55.454 WARNING streamlit.runtime.caching.cache_data_api: No runtime found, using MemoryCacheStorageManager
+2025-12-11 14:22:55.464 WARNING streamlit.runtime.caching.cache_data_api: No runtime found, using MemoryCacheStorageManager
+2025-12-11 14:22:55.464 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-11 14:22:55.704 
+  [33m[1mWarning:[0m to view this Streamlit app on a browser, run it with the following
+  command:
+
+    streamlit run test_all_pages.py [ARGUMENTS]
+2025-12-11 14:22:55.704 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-11 14:22:55.709 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-11 14:22:55.709 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-11 14:22:55.735 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-11 14:22:55.735 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-11 14:22:55.735 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+============================================================
+Phase 3 - StreamlitÓ¦ÓÃÒ³Ãæ¼ÓÔØÑéÖ¤
+============================================================
+
+[1/5] ¼ÓÔØ·ÖÎöÊı¾İ... OK (1399 Ìõ¼ÇÂ¼)
+[2/5] ¼ÆËãÇé¸Ğ·Ö²¼... OK (5 ÖÖ)
+[3/5] ¼ÆËã»°Ìâ·Ö²¼... OK (10 ¸ö»°Ìâ)
+[4/5] ¼ÆËã·çÏÕ·Ö²¼... OK (3 ¸ö¼¶±ğ)
+[5/5] ¼ÆËãÖÃĞÅ¶È... OK (5 ÏîÖ¸±ê)
+
+============================================================
+Êı¾İÍ³¼ÆÕªÒª
+============================================================
+
+¡¾¼ÇÂ¼×ÜÊı¡¿1399
+
+¡¾Çé¸Ğ·Ö²¼¡¿
+  neutral     :   863 ( 61.7%)
+  negative    :   361 ( 25.8%)
+  positive    :   171 ( 12.2%)
+  negative|positive:     3 (  0.2%)
+  positive|neutral:     1 (  0.1%)
+
+¡¾»°Ìâ·Ö²¼£¨Top 10£©¡¿
+   1. other               :   680 ( 48.6%)
+   2. business_risk       :   210 ( 15.0%)
+   3. tax_policy          :   204 ( 14.6%)
+   4. compliance          :   152 ( 10.9%)
+   5. price_impact        :   125 (  8.9%)
+   6. advocacy            :    12 (  0.9%)
+   7. price_impact|business_risk:     4 (  0.3%)
+   8. compliance|business_risk:     3 (  0.2%)
+   9. education|business_risk:     1 (  0.1%)
+  10. tax_policy|business_risk:     1 (  0.1%)
+
+¡¾·çÏÕµÈ¼¶·Ö²¼¡¿
+  low         :   988 ( 70.6%)
+  medium      :   312 ( 22.3%)
+  high        :    99 (  7.1%)
+
+¡¾ÖÃĞÅ¶ÈÆ½¾ùÖµ¡¿
+  sentiment      : 0.877
+  topic          : 0.860
+  pattern        : 0.687
+  risk           : 0.787
+  actor          : 0.829
+
+============================================================
+Traceback (most recent call last):
+  File "f:\ÑĞ¾¿Éú¾­¼ÃÑ§\Ë°ÊÕ¾­¼ÃÑ§¿ÆÑĞ\×îÓÅË°ÊÕÀíÂÛ\µçÉÌÓßÂÛÊı¾İ²úÆ·\test_all_pages.py", line 72, in <module>
+    print("\u2713 ËùÓĞÒ³Ãæ¿ÉÕı³£¼ÓÔØ£¬ÎŞ´íÎó")
+UnicodeEncodeError: 'gbk' codec can't encode character '\u2713' in position 0: illegal multibyte sequence
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "f:\ÑĞ¾¿Éú¾­¼ÃÑ§\Ë°ÊÕ¾­¼ÃÑ§¿ÆÑĞ\×îÓÅË°ÊÕÀíÂÛ\µçÉÌÓßÂÛÊı¾İ²úÆ·\test_all_pages.py", line 79, in <module>
+    print(f"\n\u2717 ´íÎó: {e}")
+UnicodeEncodeError: 'gbk' codec can't encode character '\u2717' in position 2: illegal multibyte sequence

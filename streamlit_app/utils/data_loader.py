@@ -1,0 +1,85 @@
+"""
+数据加载和处理工具
+"""
+
+import json
+import pandas as pd
+from pathlib import Path
+import streamlit as st
+import os
+
+
+@st.cache_data
+def load_analysis_data(filepath=None):
+    """加载分析结果JSON文件"""
+    if filepath is None:
+        # 自动定位data文件夹（相对于项目根目录）
+        current_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        filepath = os.path.join(current_dir, 'data', 'analysis', 'analysis_results.json')
+    
+    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+        data = json.load(f)
+    
+    results = data.get('data', [])
+    return pd.DataFrame(results)
+
+
+def get_sentiment_distribution(df):
+    """情感分布统计"""
+    return df['sentiment'].value_counts().to_dict()
+
+
+def get_topic_distribution(df):
+    """话题分布统计"""
+    return df['topic'].value_counts().head(10).to_dict()
+
+
+def get_risk_distribution(df):
+    """风险分布统计"""
+    return df['risk_level'].value_counts().to_dict()
+
+
+def get_actor_distribution(df):
+    """参与方分布统计"""
+    return df['actor'].value_counts().head(8).to_dict()
+
+
+def get_pattern_distribution(df):
+    """模式分布统计"""
+    return df['pattern'].value_counts().head(8).to_dict()
+
+
+def get_confidence_stats(df):
+    """置信度统计"""
+    return {
+        'sentiment': df['sentiment_confidence'].mean(),
+        'topic': df['topic_confidence'].mean(),
+        'pattern': df['pattern_confidence'].mean(),
+        'risk': df['risk_confidence'].mean(),
+        'actor': df['actor_confidence'].mean(),
+    }
+
+
+def filter_by_sentiment(df, sentiment):
+    """按情感筛选"""
+    return df[df['sentiment'] == sentiment]
+
+
+def filter_by_risk(df, risk_level):
+    """按风险等级筛选"""
+    return df[df['risk_level'] == risk_level]
+
+
+def search_by_keyword(df, keyword):
+    """按关键词搜索"""
+    return df[df['source_text'].str.contains(keyword, na=False, case=False)]
+
+
+def get_sample_opinions(df, sentiment=None, risk=None, limit=10):
+    """获取样本意见"""
+    result = df
+    if sentiment:
+        result = result[result['sentiment'] == sentiment]
+    if risk:
+        result = result[result['risk_level'] == risk]
+    return result.head(limit).to_dict('records')
