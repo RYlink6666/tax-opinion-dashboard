@@ -9,7 +9,7 @@ import streamlit as st
 import os
 
 
-@st.cache_data
+@st.cache_data(ttl=300)  # 缓存 5 分钟后自动刷新
 def load_analysis_data(filepath=None):
     """加载分析结果JSON文件"""
     if filepath is None:
