@@ -2,10 +2,11 @@
 BERTopic主题分析工具 - 深度话题建模
 """
 
+from __future__ import annotations
 import streamlit as st
 import pandas as pd
 import numpy as np
-from typing import Optional, List
+from typing import Optional, List, Any
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -18,7 +19,7 @@ except ImportError:
 
 
 @st.cache_resource
-def get_bertopic_model():
+def get_bertopic_model() -> Optional[Any]:
     """获取缓存的BERTopic模型（仅初始化一次）"""
     if not BERTOPIC_AVAILABLE:
         return None
@@ -38,7 +39,7 @@ def get_bertopic_model():
         return None
 
 
-def train_bertopic(texts: List[str], model: Optional[BERTopic] = None) -> tuple:
+def train_bertopic(texts: List[str], model: Optional[Any] = None) -> tuple:
     """
     训练BERTopic模型提取隐藏主题
     
@@ -63,7 +64,7 @@ def train_bertopic(texts: List[str], model: Optional[BERTopic] = None) -> tuple:
         return None, None, None
 
 
-def visualize_topics_2d(model: BERTopic, topics: np.ndarray) -> Optional[object]:
+def visualize_topics_2d(model: Optional[Any], topics: Optional[np.ndarray]) -> Optional[object]:
     """生成2D主题可视化（交互式图表）"""
     if model is None or topics is None:
         return None
@@ -75,7 +76,7 @@ def visualize_topics_2d(model: BERTopic, topics: np.ndarray) -> Optional[object]
         return None
 
 
-def visualize_topic_hierarchy(model: BERTopic) -> Optional[object]:
+def visualize_topic_hierarchy(model: Optional[Any]) -> Optional[object]:
     """生成主题层级关系图"""
     if model is None:
         return None
@@ -96,7 +97,7 @@ def visualize_topic_hierarchy(model: BERTopic) -> Optional[object]:
         return None
 
 
-def visualize_topic_similarity(model: BERTopic) -> Optional[object]:
+def visualize_topic_similarity(model: Optional[Any]) -> Optional[object]:
     """生成主题相似度热力图"""
     if model is None:
         return None
@@ -108,7 +109,7 @@ def visualize_topic_similarity(model: BERTopic) -> Optional[object]:
         return None
 
 
-def visualize_topic_terms(model: BERTopic, top_n: int = 5) -> Optional[object]:
+def visualize_topic_terms(model: Optional[Any], top_n: int = 5) -> Optional[object]:
     """生成主题词语的重要性图表"""
     if model is None:
         return None
@@ -120,7 +121,7 @@ def visualize_topic_terms(model: BERTopic, top_n: int = 5) -> Optional[object]:
         return None
 
 
-def get_topic_keywords(model: BERTopic, topic: int, top_n: int = 5) -> List[tuple]:
+def get_topic_keywords(model: Optional[Any], topic: int, top_n: int = 5) -> List[tuple]:
     """获取指定主题的关键词"""
     if model is None:
         return []
@@ -132,7 +133,7 @@ def get_topic_keywords(model: BERTopic, topic: int, top_n: int = 5) -> List[tupl
         return []
 
 
-def get_topics_summary(model: BERTopic) -> pd.DataFrame:
+def get_topics_summary(model: Optional[Any]) -> pd.DataFrame:
     """获取所有主题的摘要信息"""
     if model is None:
         return pd.DataFrame()
