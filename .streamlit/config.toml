@@ -1,30 +1,17 @@
+[client]
+showErrorDetails = true
+showMenuItems = true
+
 [theme]
 primaryColor = "#1f77b4"
 backgroundColor = "#ffffff"
 secondaryBackgroundColor = "#f0f2f6"
-textColor = "#262730"
+textColor = "#31333D"
 font = "sans serif"
-
-[browser]
-gatherUsageStats = false
-serverAddress = "localhost"
 
 [logger]
 level = "info"
 
-[client]
-showErrorDetails = true
-toolbarMode = "viewer"
-
-[server]
-maxUploadSize = 200
-enableXsrfProtection = true
-headless = true
-runOnSave = true
-
-# 关键配置：支持Streamlit Cloud部署
-[client]
-toolbarMode = "viewer"
-
-[logger]
-level = "debug"
+[ui]
+hideTopBar = false
+hideFooter = false
