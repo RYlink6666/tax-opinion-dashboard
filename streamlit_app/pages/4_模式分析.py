@@ -4,14 +4,16 @@
 
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
-import plotly.express as px
 from utils.data_loader import (
     load_analysis_data,
     translate_sentiment,
     translate_risk,
     translate_topic,
     translate_actor
+)
+from utils.chart_builder import (
+    create_horizontal_bar,
+    create_grouped_bar
 )
 
 st.set_page_config(page_title="模式分析", page_icon="🔍", layout="wide")
@@ -41,13 +43,14 @@ with col1:
         st.write(f"{pattern}: {count} ({pct:.1f}%)")
 
 with col2:
-    fig_pattern = go.Figure(data=[go.Bar(
-        y=pattern_dist.index[::-1],
-        x=pattern_dist.values[::-1],
-        orientation='h',
-        marker=dict(color=pattern_dist.values[::-1], colorscale='Viridis')
-    )])
-    fig_pattern.update_layout(height=500, title="", xaxis_title="频次", yaxis_title="")
+    # 反向排序以匹配原始输出
+    pattern_labels = list(pattern_dist.index[::-1])
+    pattern_values = list(pattern_dist.values[::-1])
+    fig_pattern = create_horizontal_bar(
+        pattern_labels,
+        pattern_values,
+        title="舆论模式分布"
+    )
     st.plotly_chart(fig_pattern, use_container_width=True)
 
 st.markdown("---")
@@ -59,18 +62,14 @@ pattern_sentiment = pd.crosstab(df['pattern'], df['sentiment'])
 # 只显示前8个模式
 pattern_sentiment = pattern_sentiment.head(8)
 
-# 翻译情感标签
+# 翻译标签并准备数据
 sentiment_labels = [translate_sentiment(col) for col in pattern_sentiment.columns]
-fig_pattern_sent = go.Figure(data=[
-    go.Bar(name=sentiment_labels[i], x=pattern_sentiment.index, y=pattern_sentiment[pattern_sentiment.columns[i]])
-    for i in range(len(pattern_sentiment.columns))
-])
-fig_pattern_sent.update_layout(
-    barmode='group', 
-    height=400, 
-    xaxis_title="舆论模式", 
-    yaxis_title="记录数",
-    xaxis_tickangle=-45
+pattern_sentiment_display = pattern_sentiment.copy()
+pattern_sentiment_display.columns = sentiment_labels
+
+fig_pattern_sent = create_grouped_bar(
+    pattern_sentiment_display,
+    title="舆论模式与情感关系"
 )
 st.plotly_chart(fig_pattern_sent, use_container_width=True)
 
