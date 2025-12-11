@@ -10,8 +10,7 @@ from utils.data_loader import (
     translate_risk,
     translate_topic,
     translate_actor,
-    get_high_risk_subset,
-    get_cross_analysis
+    get_high_risk_subset
 )
 from utils.chart_builder import (
     create_distribution_pie,

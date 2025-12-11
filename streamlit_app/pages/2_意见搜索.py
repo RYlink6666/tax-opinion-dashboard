@@ -18,7 +18,6 @@ from utils.chart_builder import (
     create_distribution_pie,
     create_horizontal_bar
 )
-from utils.components import display_opinion_expander
 
 st.set_page_config(page_title="数据搜索", page_icon="🔍", layout="wide")
 

@@ -18,7 +18,6 @@ from utils.chart_builder import (
     create_horizontal_bar,
     create_stacked_bar
 )
-from utils.components import display_opinion_expander
 import json
 
 st.set_page_config(page_title="互动分析工具", page_icon="🔮", layout="wide")
@@ -448,7 +447,7 @@ with tab7:
             st.write(sentiment_emoji)
         
         with st.expander("完整内容"):
-            display_opinion_expander(row, show_fields=['sentiment', 'risk_level', 'topic', 'actor'])
+            st.write(row['source_text'])
 
 # ============================================================================
 # Tab 8: 导出报告

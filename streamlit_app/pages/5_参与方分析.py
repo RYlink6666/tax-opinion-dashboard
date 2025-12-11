@@ -11,8 +11,7 @@ from utils.data_loader import (
     translate_risk,
     translate_topic,
     translate_actor,
-    get_actors_split_statistics,
-    get_cross_analysis
+    get_actors_split_statistics
 )
 from utils.chart_builder import (
     create_distribution_pie,
