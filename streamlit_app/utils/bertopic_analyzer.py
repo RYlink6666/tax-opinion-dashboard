@@ -361,3 +361,223 @@ def visualize_topic_per_class(model: Optional[Any], df: pd.DataFrame, class_colu
         return fig
     except Exception as e:
         return None
+
+
+# ============================================================================
+# Phase 4 新增函数 - F101, F102, F103
+# ============================================================================
+
+def visualize_distribution(model: Optional[Any], topic_id: int, probabilities: Optional[np.ndarray] = None, 
+                          min_probability: float = 0.015) -> Optional[object]:
+    """
+    F101: 单文档主题概率分布可视化
+    
+    显示某条文档属于各主题的置信度百分比（柱状图）
+    
+    参数:
+        model: BERTopic模型
+        topic_id: 文档在模型中的index
+        probabilities: 单条文档的主题概率数组 (shape: [n_topics])
+        min_probability: 最小显示概率阈值
+    
+    返回:
+        Plotly交互式柱状图
+    """
+    if model is None:
+        return None
+    
+    try:
+        # 如果没提供probabilities，尝试从模型获取
+        if probabilities is None:
+            if hasattr(model, 'probabilities_') and model.probabilities_ is not None:
+                if topic_id < len(model.probabilities_):
+                    probabilities = model.probabilities_[topic_id]
+                else:
+                    st.warning(f"文档索引{topic_id}超出范围")
+                    return None
+            else:
+                st.warning("模型未计算概率，请在BERTopic初始化时设置calculate_probabilities=True")
+                return None
+        
+        # 获取主题信息
+        topic_info = model.get_topic_info()
+        if topic_info is None or len(topic_info) == 0:
+            return None
+        
+        # 过滤低概率主题
+        valid_indices = probabilities >= min_probability
+        filtered_probs = probabilities[valid_indices]
+        
+        if len(filtered_probs) == 0:
+            st.info("💡 该文档的主题概率都很低，可能是噪声文档")
+            return None
+        
+        # 获取对应的主题标签
+        valid_topics = np.where(valid_indices)[0]
+        topic_labels = []
+        for idx in valid_topics:
+            matching = topic_info[topic_info['Topic'] == idx]
+            if not matching.empty:
+                topic_labels.append(f"话题{int(idx)}: {matching.iloc[0]['Name'][:15]}")
+            else:
+                topic_labels.append(f"话题{int(idx)}")
+        
+        # 创建图表
+        import plotly.graph_objects as go
+        fig = go.Figure(data=[go.Bar(
+            x=topic_labels,
+            y=filtered_probs,
+            marker=dict(color=filtered_probs, colorscale='Viridis', showscale=True),
+            text=[f'{p:.2%}' for p in filtered_probs],
+            textposition='outside'
+        )])
+        
+        fig.update_layout(
+            title=f"文档{topic_id}的主题概率分布",
+            xaxis_title="主题",
+            yaxis_title="概率",
+            height=400,
+            hovermode='x unified'
+        )
+        
+        return fig
+    
+    except Exception as e:
+        st.warning(f"概率分布可视化生成失败: {e}")
+        return None
+
+
+def visualize_approximate_distribution(model: Optional[Any], texts: List[str], 
+                                       doc_index: int = 0, calculate_tokens: bool = True) -> Optional[object]:
+    """
+    F102: Token级别主题分布分析
+    
+    精确到单词级别，显示哪些词触发了哪个主题
+    
+    参数:
+        model: BERTopic模型
+        texts: 所有文本列表
+        doc_index: 要分析的文档索引
+        calculate_tokens: 是否计算token级别的分布
+    
+    返回:
+        包含token级分布的DataFrame或可视化
+    """
+    if model is None or doc_index >= len(texts):
+        return None
+    
+    try:
+        # 获取近似分布（approximate_distribution）
+        topic_distr, topic_token_distr = model.approximate_distribution(
+            [texts[doc_index]],
+            calculate_tokens=calculate_tokens
+        )
+        
+        if topic_distr is None:
+            return None
+        
+        # 转换为DataFrame显示
+        topic_info = model.get_topic_info()
+        
+        # 主题级分布
+        result_data = []
+        for topic_id, prob in enumerate(topic_distr[0]):
+            if prob > 0.01:  # 只显示概率>1%的主题
+                matching = topic_info[topic_info['Topic'] == topic_id]
+                topic_name = matching.iloc[0]['Name'] if not matching.empty else f"话题{topic_id}"
+                result_data.append({
+                    '主题': f"{topic_id}: {topic_name}",
+                    '概率': f"{prob:.2%}",
+                    '是否为目标主题': prob > 0.3
+                })
+        
+        result_df = pd.DataFrame(result_data)
+        
+        # Token级分布（如果可用）
+        if calculate_tokens and topic_token_distr is not None and len(topic_token_distr) > 0:
+            # 创建token标记
+            text = texts[doc_index]
+            words = text.split()
+            
+            token_info = []
+            for word_idx, word in enumerate(words):
+                if word_idx < len(topic_token_distr[0]):
+                    top_topic = np.argmax(topic_token_distr[0][word_idx])
+                    prob = topic_token_distr[0][word_idx][top_topic]
+                    matching = topic_info[topic_info['Topic'] == top_topic]
+                    topic_name = matching.iloc[0]['Name'] if not matching.empty else f"话题{top_topic}"
+                    
+                    token_info.append({
+                        '词': word,
+                        '主题': f"{top_topic}: {topic_name}",
+                        '置信度': f"{prob:.2%}"
+                    })
+            
+            token_df = pd.DataFrame(token_info)
+            return {'主题分布': result_df, '词级分布': token_df}
+        
+        return {'主题分布': result_df}
+    
+    except Exception as e:
+        st.warning(f"近似分布计算失败: {e}")
+        return None
+
+
+def reduce_outliers(model: Optional[Any], topics: np.ndarray, 
+                   strategy: str = "probabilities", threshold: float = 0.1) -> tuple:
+    """
+    F103: 离群值自动重分类
+    
+    将noise文档(标签-1)重新分配到有效主题
+    
+    参数:
+        model: BERTopic模型
+        topics: 原始主题数组
+        strategy: 重分类策略
+            - "probabilities": 基于HDBSCAN软聚类概率
+            - "distributions": 基于近似主题分布
+            - "c-tf-idf": 基于词频相似度（最快）
+            - "embeddings": 基于语义embedding相似度（最准）
+        threshold: 分配置信度阈值 (0.05-0.3)
+    
+    返回:
+        (新的topics数组, 统计报告dict)
+    """
+    if model is None or topics is None:
+        return topics, {}
+    
+    try:
+        # 计算统计信息
+        noise_mask = topics == -1
+        noise_count_before = np.sum(noise_mask)
+        
+        if noise_count_before == 0:
+            return topics, {'message': '没有离群值需要处理'}
+        
+        # 调用BERTopic的reduce_outliers方法
+        new_topics = model.reduce_outliers(
+            topics,
+            strategy=strategy,
+            threshold=threshold
+        )
+        
+        # 计算改进效果
+        noise_count_after = np.sum(new_topics == -1)
+        reclassified_count = noise_count_before - noise_count_after
+        reclassified_pct = reclassified_count / noise_count_before * 100 if noise_count_before > 0 else 0
+        
+        report = {
+            'strategy': strategy,
+            'threshold': threshold,
+            '重分类前噪声数': int(noise_count_before),
+            '重分类后噪声数': int(noise_count_after),
+            '重新分配数': int(reclassified_count),
+            '改进率': f"{reclassified_pct:.1f}%",
+            '状态': '成功' if reclassified_count > 0 else '无改进'
+        }
+        
+        return new_topics, report
+    
+    except Exception as e:
+        st.warning(f"离群值处理失败: {e}")
+        return topics, {'error': str(e)}
