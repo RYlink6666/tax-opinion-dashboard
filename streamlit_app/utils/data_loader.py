@@ -295,3 +295,339 @@ def get_actors_split_statistics(df):
         actors = str(actors_str).split('|')
         all_actors.extend([a.strip() for a in actors])
     return pd.Series(all_actors).value_counts()
+
+
+@st.cache_data
+def get_actors_sentiment_cross(df):
+    """获取参与方×情感交叉表（拆分后的演员）
+    
+    用法：
+    >>> actor_sent = get_actors_sentiment_cross(df)
+    >>> fig = create_grouped_bar(actor_sent)
+    """
+    df_split = []
+    for idx, row in df.iterrows():
+        actors = str(row['actor']).split('|')
+        for actor in actors:
+            df_split.append({
+                'actor': actor.strip(),
+                'sentiment': row['sentiment']
+            })
+    df_split_df = pd.DataFrame(df_split)
+    return pd.crosstab(df_split_df['actor'], df_split_df['sentiment'])
+
+
+@st.cache_data
+def get_actors_risk_cross(df):
+    """获取参与方×风险交叉表（拆分后的演员）
+    
+    用法：
+    >>> actor_risk = get_actors_risk_cross(df)
+    >>> fig = create_stacked_bar(actor_risk)
+    """
+    df_split = []
+    for idx, row in df.iterrows():
+        actors = str(row['actor']).split('|')
+        for actor in actors:
+            df_split.append({
+                'actor': actor.strip(),
+                'risk_level': row['risk_level']
+            })
+    df_split_df = pd.DataFrame(df_split)
+    return pd.crosstab(df_split_df['actor'], df_split_df['risk_level'])
+
+
+@st.cache_data
+def get_actors_topic_cross(df):
+    """获取参与方×话题交叉表（拆分后的演员）
+    
+    用法：
+    >>> actor_topic = get_actors_topic_cross(df)
+    >>> fig = create_crosstab_heatmap(actor_topic)
+    """
+    df_split = []
+    for idx, row in df.iterrows():
+        actors = str(row['actor']).split('|')
+        for actor in actors:
+            df_split.append({
+                'actor': actor.strip(),
+                'topic': row['topic']
+            })
+    df_split_df = pd.DataFrame(df_split)
+    return pd.crosstab(df_split_df['actor'], df_split_df['topic'])
+
+
+@st.cache_data
+def get_high_risk_analysis(df):
+    """获取高风险舆论的多维统计分析
+    
+    返回高风险舆论的数量及其情感/话题/参与方分布
+    用于 P3 风险分析页面
+    
+    返回dict包含：
+    - count: 高风险舆论总数
+    - sentiment: 高风险舆论的情感分布
+    - topic: 高风险舆论的话题分布 (Top 5)
+    - actor: 高风险舆论的参与方分布 (Top 5)
+    
+    用法：
+    >>> high_risk_stats = get_high_risk_analysis(df)
+    >>> sent_dist = high_risk_stats['sentiment']
+    """
+    high_risk_df = df[df['risk_level'].isin(['critical', 'high'])]
+    return {
+        'count': len(high_risk_df),
+        'sentiment': high_risk_df['sentiment'].value_counts(),
+        'topic': high_risk_df['topic'].value_counts().head(5),
+        'actor': high_risk_df['actor'].value_counts().head(5)
+    }
+
+
+@st.cache_data
+def get_topic_statistics(df):
+    """计算所有话题的热度、敏感度和情感分布统计
+    
+    对每个话题计算：
+    - heat: 出现频次（讨论热度）
+    - risk_index: 高/严重风险占比（%）
+    - negative_pct, neutral_pct, positive_pct: 各情感占比（%）
+    - sensitivity: 敏感度指数 = risk_index×0.6 + negative_pct×0.4
+    
+    返回按热度排序的DataFrame
+    
+    用法：
+    >>> topic_stats_df = get_topic_statistics(df)
+    >>> most_heated = topic_stats_df.iloc[0]
+    >>> most_sensitive = topic_stats_df.sort_values('sensitivity', ascending=False).iloc[0]
+    
+    此函数替换P7中原有的 L49-87 的大块循环计算
+    """
+    topic_stats = []
+    
+    for topic in df['topic'].unique():
+        topic_df = df[df['topic'] == topic]
+        count = len(topic_df)
+        
+        # 热度 = 出现频次
+        heat = count
+        
+        # 风险指数 = 高风险+严重风险占比
+        high_risk_count = len(topic_df[topic_df['risk_level'].isin(['critical', 'high'])])
+        risk_index = high_risk_count / count * 100 if count > 0 else 0
+        
+        # 负面占比
+        negative_count = len(topic_df[topic_df['sentiment'] == 'negative'])
+        negative_pct = negative_count / count * 100 if count > 0 else 0
+        
+        # 中立占比
+        neutral_count = len(topic_df[topic_df['sentiment'] == 'neutral'])
+        neutral_pct = neutral_count / count * 100 if count > 0 else 0
+        
+        # 正面占比
+        positive_count = len(topic_df[topic_df['sentiment'] == 'positive'])
+        positive_pct = positive_count / count * 100 if count > 0 else 0
+        
+        # 敏感度 = 风险指数 + 负面占比 的加权
+        sensitivity = risk_index * 0.6 + negative_pct * 0.4
+        
+        topic_stats.append({
+            'topic': topic,
+            'heat': heat,
+            'risk_index': risk_index,
+            'negative_pct': negative_pct,
+            'neutral_pct': neutral_pct,
+            'positive_pct': positive_pct,
+            'sensitivity': sensitivity,
+        })
+    
+    return pd.DataFrame(topic_stats).sort_values('heat', ascending=False)
+
+
+@st.cache_data
+def get_quick_stats(df):
+    """一次性计算常用的快速统计指标（缓存）
+    
+    返回dict包含：
+    - negative_count: 负面数
+    - negative_pct: 负面占比
+    - high_risk_count: 高风险数
+    - high_risk_pct: 高风险占比
+    - avg_confidence: 平均置信度
+    - total_count: 总数
+    
+    用法：
+    >>> stats = get_quick_stats(result_df)
+    >>> st.metric("负面占比", f"{stats['negative_pct']:.1f}%")
+    
+    消除P2中L76-77, L84-85, L228-235的重复计算
+    """
+    neg_count = len(df[df['sentiment'] == 'negative'])
+    neg_pct = neg_count / len(df) * 100 if len(df) > 0 else 0
+    
+    high_risk_count = len(df[df['risk_level'].isin(['critical', 'high'])])
+    high_risk_pct = high_risk_count / len(df) * 100 if len(df) > 0 else 0
+    
+    avg_conf = df['sentiment_confidence'].mean() if len(df) > 0 else 0
+    
+    return {
+        'negative_count': neg_count,
+        'negative_pct': neg_pct,
+        'high_risk_count': high_risk_count,
+        'high_risk_pct': high_risk_pct,
+        'avg_confidence': avg_conf,
+        'total_count': len(df)
+    }
+
+
+@st.cache_data
+def get_topic_comparison_data(df, selected_topics):
+    """计算多个话题的对比数据
+    
+    用法：
+    >>> comparison_df = get_topic_comparison_data(df, ['tax_policy', 'business_risk'])
+    
+    消除P9 Tab5中L289-298的重复手动计算
+    """
+    comparison_data = []
+    
+    for topic in selected_topics:
+        topic_df = df[df['topic'] == topic]
+        
+        comparison_data.append({
+            '话题': translate_topic(topic),
+            '总数': len(topic_df),
+            '负面%': f"{(topic_df['sentiment'] == 'negative').sum() / len(topic_df) * 100:.1f}%",
+            '高风险%': f"{((topic_df['risk_level'] == 'critical') | (topic_df['risk_level'] == 'high')).sum() / len(topic_df) * 100:.1f}%",
+            '平均置信度': f"{topic_df['sentiment_confidence'].mean():.2%}"
+        })
+    
+    return pd.DataFrame(comparison_data)
+
+
+@st.cache_data
+def get_actor_statistics_summary(df):
+    """获取所有参与方的统计汇总表（拆分后）
+    
+    返回DataFrame包含：
+    - 参与方名称
+    - 意见数
+    - 占比
+    - 负面%
+    - 高风险%
+    
+    用法：
+    >>> actor_summary_df = get_actor_statistics_summary(df)
+    
+    消除P9 Tab6中L389-402的重复手动计算（汇总表）
+    """
+    # 拆分复合参与方标签
+    all_actors = []
+    for actors_str in df['actor']:
+        if pd.notna(actors_str):
+            actors = [a.strip() for a in str(actors_str).split('|')]
+            all_actors.extend(actors)
+    
+    actor_series = pd.Series(all_actors)
+    actor_dist = actor_series.value_counts()
+    
+    # 构建汇总表
+    actor_summary = []
+    for actor in actor_dist.index:
+        pattern = rf'(^|\|){actor}($|\|)'
+        mask = df['actor'].str.contains(pattern, na=False, regex=True)
+        actor_df = df[mask]
+        
+        actor_summary.append({
+            '参与方': translate_actor(actor),
+            '意见数_numeric': len(actor_df),
+            '意见数': str(len(actor_df)),
+            '占比': f"{len(actor_df) / len(df) * 100:.1f}%",
+            '负面%': f"{(actor_df['sentiment'] == 'negative').sum() / len(actor_df) * 100:.1f}%",
+            '高风险%': f"{((actor_df['risk_level'] == 'critical') | (actor_df['risk_level'] == 'high')).sum() / len(actor_df) * 100:.1f}%"
+        })
+    
+    result_df = pd.DataFrame(actor_summary)
+    result_df = result_df.sort_values('意见数_numeric', ascending=False)
+    return result_df[['参与方', '意见数', '占比', '负面%', '高风险%']]
+
+
+@st.cache_data
+def get_actor_segment_analysis(df, actor_names):
+    """获取特定参与方组群的分析数据（支持复合标签）
+    
+    返回dict包含：
+    - sentiment_dist: 情感分布
+    - risk_dist: 风险分布  
+    - topic_dist: 话题分布（Top 5）
+    - count: 总数
+    
+    用法：
+    >>> consumer_analysis = get_actor_segment_analysis(df, ['consumer'])
+    >>> business_analysis = get_actor_segment_analysis(df, ['enterprise', 'cross_border_seller'])
+    
+    消除P6中L61-69, L97-118的重复段落查询和分布计算
+    """
+    if isinstance(actor_names, str):
+        actor_names = [actor_names]
+    
+    # 构建过滤mask - 支持复合标签
+    mask = pd.Series([False] * len(df), index=df.index)
+    for actor in actor_names:
+        pattern = rf'(^|\|){actor}($|\|)'
+        mask = mask | df['actor'].str.contains(pattern, na=False, regex=True)
+    
+    segment_df = df[mask]
+    
+    return {
+        'count': len(segment_df),
+        'sentiment_dist': segment_df['sentiment'].value_counts(),
+        'risk_dist': segment_df['risk_level'].value_counts(),
+        'topic_dist': segment_df['topic'].value_counts().head(5),
+        'actor_dist': segment_df['actor'].value_counts()
+    }
+
+
+@st.cache_data
+def get_policy_analysis(df):
+    """获取政策相关舆论分析
+    
+    返回dict包含：
+    - total: 政策相关舆论总数
+    - pct: 占比
+    - sentiment_dist: 情感分布
+    
+    用法：
+    >>> policy_stats = get_policy_analysis(df)
+    
+    消除P6 L131-140的政策舆论计算
+    """
+    policy_df = df[df['topic'] == 'tax_policy']
+    return {
+        'total': len(policy_df),
+        'pct': len(policy_df) / len(df) * 100,
+        'sentiment_dist': policy_df['sentiment'].value_counts()
+    }
+
+
+@st.cache_data
+def get_risk_segment_analysis(df):
+    """获取高风险舆论的详细分析
+    
+    返回dict包含：
+    - total: 高风险舆论数
+    - pct: 占比
+    - topic_dist: 话题分布
+    - actor_dist: 参与方分布
+    
+    用法：
+    >>> risk_stats = get_risk_segment_analysis(df)
+    
+    消除P6 L157-170的高风险舆论计算
+    """
+    high_risk_df = df[df['risk_level'].isin(['critical', 'high'])]
+    return {
+        'total': len(high_risk_df),
+        'pct': len(high_risk_df) / len(df) * 100,
+        'topic_dist': high_risk_df['topic'].value_counts(),
+        'actor_dist': high_risk_df['actor'].value_counts()
+    }

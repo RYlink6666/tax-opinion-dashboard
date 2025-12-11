@@ -12,11 +12,17 @@ from utils.data_loader import (
     translate_sentiment,
     translate_risk,
     translate_topic,
-    translate_actor
+    translate_actor,
+    get_topic_comparison_data,
+    get_actor_statistics_summary
 )
 from utils.chart_builder import (
     create_horizontal_bar,
     create_stacked_bar
+)
+from utils.components import (
+    display_search_results,
+    display_opinion_batch
 )
 import json
 
@@ -191,23 +197,8 @@ with tab3:
         else:
             results = df[df['source_text'] == keyword]
         
-        st.write(f"找到 **{len(results)}** 条相关意见")
-        
-        if len(results) > 0:
-            for idx, (i, row) in enumerate(results.head(max_results).iterrows(), 1):
-                col1, col2 = st.columns([4, 1])
-                
-                with col1:
-                    st.write(f"**#{idx}** {row['source_text'][:80]}...")
-                
-                with col2:
-                    sentiment_color = "🔴" if row['sentiment'] == 'negative' else ("🟢" if row['sentiment'] == 'positive' else "⚪")
-                    st.write(f"{sentiment_color} {translate_risk(row['risk_level'])}")
-                
-                with st.expander("详情"):
-                    st.write(f"话题: {translate_topic(row['topic'])}")
-                    st.write(f"参与方: {translate_actor(row['actor'])}")
-                    st.write(f"完整内容: {row['source_text']}")
+        # 使用通用搜索结果展示函数（消除手动循环）
+        display_search_results(results, keyword=keyword, max_items=max_results)
 
 # ============================================================================
 # Tab 4: 话题管理和标签编辑
@@ -279,25 +270,10 @@ with tab5:
         )
     
     if selected_topics:
-        filtered_df = df[df['topic'].isin(selected_topics)]
-        
         st.markdown("---")
         
-        # 对比数据
-        comparison_data = []
-        
-        for topic in selected_topics:
-            topic_df = df[df['topic'] == topic]
-            
-            comparison_data.append({
-                '话题': translate_topic(topic),
-                '总数': len(topic_df),
-                '负面%': f"{(topic_df['sentiment'] == 'negative').sum() / len(topic_df) * 100:.1f}%",
-                '高风险%': f"{((topic_df['risk_level'] == 'critical') | (topic_df['risk_level'] == 'high')).sum() / len(topic_df) * 100:.1f}%",
-                '平均置信度': f"{topic_df['sentiment_confidence'].mean():.2%}"
-            })
-        
-        comparison_df = pd.DataFrame(comparison_data)
+        # 对比数据（使用缓存函数）
+        comparison_df = get_topic_comparison_data(df, selected_topics)
         st.dataframe(comparison_df, use_container_width=True)
         
         # 可视化对比
@@ -383,25 +359,9 @@ with tab6:
     
     st.markdown("---")
     
-    # 参与方统计表
+    # 参与方统计表（使用缓存函数）
     st.write("**参与方统计详情**")
-    
-    actor_summary = []
-    for actor in actor_dist.index:
-        # 精确匹配（支持复合标签）
-        pattern = rf'(^|\|){actor}($|\|)'
-        mask = df['actor'].str.contains(pattern, na=False, regex=True)
-        actor_df = df[mask]
-        
-        actor_summary.append({
-            '参与方': translate_actor(actor),
-            '意见数': len(actor_df),
-            '占比': f"{len(actor_df) / len(df) * 100:.1f}%",
-            '负面%': f"{(actor_df['sentiment'] == 'negative').sum() / len(actor_df) * 100:.1f}%",
-            '高风险%': f"{((actor_df['risk_level'] == 'critical') | (actor_df['risk_level'] == 'high')).sum() / len(actor_df) * 100:.1f}%"
-        })
-    
-    actor_summary_df = pd.DataFrame(actor_summary).sort_values('意见数', ascending=False)
+    actor_summary_df = get_actor_statistics_summary(df)
     st.dataframe(actor_summary_df, use_container_width=True)
 
 # ============================================================================
@@ -425,29 +385,18 @@ with tab7:
     with col2:
         top_n = st.number_input("显示Top-N", min_value=1, max_value=10, value=3)
     
-    # 获取该话题的代表意见（按置信度排序）
+    # 获取该话题的代表意见（按置信度排序，使用通用函数）
     topic_data = df[df['topic'] == selected_topic].sort_values(
         'sentiment_confidence',
         ascending=False
     ).head(top_n)
     
-    st.write(f"**{translate_topic(selected_topic)} 的{top_n}条代表意见**")
-    
-    for rank, (idx, row) in enumerate(topic_data.iterrows(), 1):
-        col1, col2, col3 = st.columns([3, 1, 1])
-        
-        with col1:
-            st.write(f"**#{rank}** {row['source_text'][:100]}...")
-        
-        with col2:
-            st.metric("置信度", f"{row['sentiment_confidence']:.0%}")
-        
-        with col3:
-            sentiment_emoji = "🔴" if row['sentiment'] == 'negative' else ("🟢" if row['sentiment'] == 'positive' else "⚪")
-            st.write(sentiment_emoji)
-        
-        with st.expander("完整内容"):
-            st.write(row['source_text'])
+    # 使用通用批量展示函数（消除手动意见循环）
+    display_opinion_batch(
+        topic_data,
+        title=f"{translate_topic(selected_topic)} 的代表意见（Top {top_n}）",
+        show_fields=['sentiment', 'topic']
+    )
 
 # ============================================================================
 # Tab 8: 导出报告

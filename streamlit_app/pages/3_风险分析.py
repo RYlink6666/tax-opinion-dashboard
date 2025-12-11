@@ -10,7 +10,8 @@ from utils.data_loader import (
     translate_risk,
     translate_topic,
     translate_actor,
-    get_high_risk_subset
+    get_high_risk_subset,
+    get_high_risk_analysis
 )
 from utils.chart_builder import (
     create_distribution_pie,
@@ -63,33 +64,32 @@ with col2:
 
 st.markdown("---")
 
-# 2. 高风险舆论分析
+# 2. 高风险與论分析
 st.subheader("2️⃣ 高风险舆论特征分析")
 
+# 使用缓存函数获取高风险统计
+high_risk_stats = get_high_risk_analysis(df)
 high_risk_df = get_high_risk_subset(df)
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric("高风险总数", len(high_risk_df))
+    st.metric("高风险总数", high_risk_stats['count'])
     st.write("**按情感分布**")
-    sent_dist = high_risk_df['sentiment'].value_counts()
-    for sent, count in sent_dist.items():
-        pct = count / len(high_risk_df) * 100
+    for sent, count in high_risk_stats['sentiment'].items():
+        pct = count / high_risk_stats['count'] * 100
         st.write(f"{translate_sentiment(sent)}: {count} ({pct:.1f}%)")
 
 with col2:
     st.write("**高风险话题Top 5**")
-    topic_dist = high_risk_df['topic'].value_counts().head(5)
-    for topic, count in topic_dist.items():
-        pct = count / len(high_risk_df) * 100
+    for topic, count in high_risk_stats['topic'].items():
+        pct = count / high_risk_stats['count'] * 100
         st.write(f"{translate_topic(topic)}: {count} ({pct:.1f}%)")
 
 with col3:
     st.write("**高风险参与方Top 5**")
-    actor_dist = high_risk_df['actor'].value_counts().head(5)
-    for actor, count in actor_dist.items():
-        pct = count / len(high_risk_df) * 100
+    for actor, count in high_risk_stats['actor'].items():
+        pct = count / high_risk_stats['count'] * 100
         st.write(f"{translate_actor(actor)}: {count} ({pct:.1f}%)")
 
 # 3. 高风险舆论按话题分布

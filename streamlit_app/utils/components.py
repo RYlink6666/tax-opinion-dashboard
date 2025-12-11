@@ -326,3 +326,88 @@ def display_insights_list(insights_list):
     st.subheader("💡 关键发现")
     for i, insight in enumerate(insights_list, 1):
         display_insight(i, insight)
+
+
+# ============================================================================
+# 8. 批量意见展示函数
+# ============================================================================
+
+def display_opinion_batch(df, max_items=10, show_fields=None, title=None):
+    """批量显示意见列表（通用展示函数）
+    
+    用法：
+        # P9 Tab 3 关键词搜索结果展示
+        results = df[df['source_text'].str.contains(keyword, case=False, na=False)]
+        display_opinion_batch(results, max_items=20, title="搜索结果")
+        
+        # P9 Tab 7 代表意见展示
+        top_opinions = df.sort_values('sentiment_confidence', ascending=False).head(5)
+        display_opinion_batch(top_opinions, title="置信度最高的意见")
+    
+    参数：
+        df: DataFrame（包含要展示的意见行）
+        max_items: 最多显示几条（超过此数会分页）
+        show_fields: 要显示的字段列表（None时显示默认字段）
+        title: 展示面板的标题（可选）
+    """
+    if len(df) == 0:
+        st.warning("❌ 无结果")
+        return
+    
+    if title:
+        st.write(f"**{title}** (共 {len(df)} 条)")
+    
+    # 分页处理
+    if len(df) > max_items:
+        start_idx, end_idx = paginate_dataframe(df, page_size=max_items)
+        display_df = df.iloc[start_idx:end_idx]
+    else:
+        start_idx = 0
+        display_df = df
+    
+    # 批量显示意见
+    for idx, (_, row) in enumerate(display_df.iterrows(), start_idx + 1):
+        display_opinion_expander(row, show_fields=show_fields, index=idx)
+
+
+def display_search_results(df, keyword=None, max_items=10):
+    """特化的搜索结果展示（带搜索关键词高亮提示）
+    
+    用法：
+        # P9 Tab 3 搜索结果
+        results = df[df['source_text'].str.contains(keyword, case=False)]
+        display_search_results(results, keyword=keyword, max_items=20)
+    
+    消除P9 Tab3中L197-210的手动结果循环
+    """
+    if len(df) == 0:
+        st.warning("❌ 未找到匹配结果")
+        return
+    
+    st.write(f"找到 **{len(df)}** 条相关意见")
+    
+    # 分页处理
+    if len(df) > max_items:
+        start_idx, end_idx = paginate_dataframe(df, page_size=max_items)
+        display_df = df.iloc[start_idx:end_idx]
+    else:
+        start_idx = 0
+        display_df = df
+    
+    # 显示搜索结果摘要
+    for idx, (_, row) in enumerate(display_df.iterrows(), start_idx + 1):
+        col1, col2 = st.columns([4, 1])
+        
+        with col1:
+            # 搜索结果摘要展示
+            text_preview = row['source_text'][:80] + "..." if len(row['source_text']) > 80 else row['source_text']
+            st.write(f"**#{idx}** {text_preview}")
+        
+        with col2:
+            sentiment_color = "🔴" if row['sentiment'] == 'negative' else ("🟢" if row['sentiment'] == 'positive' else "⚪")
+            st.write(f"{sentiment_color} {translate_risk(row['risk_level'])}")
+        
+        with st.expander("详情"):
+            st.write(f"**话题**: {translate_topic(row['topic'])}")
+            st.write(f"**参与方**: {translate_actor(row['actor'])}")
+            st.write(f"**完整内容**: {row['source_text']}")

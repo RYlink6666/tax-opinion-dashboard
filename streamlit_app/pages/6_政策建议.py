@@ -4,13 +4,20 @@
 
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
 from utils.data_loader import (
     load_analysis_data,
     translate_sentiment,
     translate_risk,
     translate_topic,
-    translate_actor
+    translate_actor,
+    get_actor_segment_analysis,
+    get_policy_analysis,
+    get_risk_segment_analysis,
+    get_quick_stats
+)
+from utils.chart_builder import (
+    create_distribution_pie,
+    create_horizontal_bar
 )
 
 st.set_page_config(page_title="政策建议", page_icon="💡", layout="wide")
@@ -58,30 +65,28 @@ tabs = st.tabs(["消费者心态", "商家困境", "政策认知", "风险点"])
 with tabs[0]:
     st.write("**消费者占比最高: 38.8%**")
     
-    consumer_df = df[df['actor'] == 'consumer']
-    sent_dist = consumer_df['sentiment'].value_counts()
+    # 获取消费者分析数据（使用缓存函数）
+    consumer_analysis = get_actor_segment_analysis(df, 'consumer')
+    sent_dist = consumer_analysis['sentiment_dist']
+    topic_dist = consumer_analysis['topic_dist']
     
     col1, col2 = st.columns(2)
     with col1:
         st.write("**消费者舆论分布**")
         for sent, count in sent_dist.items():
-            pct = count / len(consumer_df) * 100
-            st.write(f"{sent}: {pct:.1f}%")
+            pct = count / consumer_analysis['count'] * 100
+            st.write(f"{translate_sentiment(sent)}: {pct:.1f}%")
     
     with col2:
-        # 翻译情感标签
-        sentiment_labels = [translate_sentiment(sent) for sent in sent_dist.index]
-        fig = go.Figure(data=[go.Pie(
-            labels=sentiment_labels,
-            values=sent_dist.values,
-            marker=dict(colors=['#ef553b', '#636efa', '#00cc96'])
-        )])
+        st.write("**消费者舆论分布（图表）**")
+        # 使用库函数生成图表
+        sentiment_labels = [translate_sentiment(s) for s in sent_dist.index]
+        fig = create_distribution_pie(sent_dist.values, sentiment_labels, title="消费者舆论分布")
         st.plotly_chart(fig, use_container_width=True)
     
     st.write("**消费者主要关注话题**")
-    topic_dist = consumer_df['topic'].value_counts().head(5)
     for topic, count in topic_dist.items():
-        pct = count / len(consumer_df) * 100
+        pct = count / consumer_analysis['count'] * 100
         st.write(f"• {translate_topic(topic)}: {pct:.1f}%")
     
     st.info("""
@@ -94,27 +99,28 @@ with tabs[0]:
 with tabs[1]:
     st.write("**商家占比: 17-19% (企业+跨境卖家)**")
     
-    business_df = df[df['actor'].isin(['enterprise', 'cross_border_seller'])]
-    sent_dist = business_df['sentiment'].value_counts()
-    risk_dist = business_df['risk_level'].value_counts()
+    # 获取商家分析数据（使用缓存函数）
+    business_analysis = get_actor_segment_analysis(df, ['enterprise', 'cross_border_seller'])
+    sent_dist = business_analysis['sentiment_dist']
+    risk_dist = business_analysis['risk_dist']
+    topic_dist = business_analysis['topic_dist']
     
     col1, col2 = st.columns(2)
     with col1:
         st.write("**商家舆论分布**")
         for sent, count in sent_dist.items():
-            pct = count / len(business_df) * 100
+            pct = count / business_analysis['count'] * 100
             st.write(f"{translate_sentiment(sent)}: {pct:.1f}%")
     
     with col2:
         st.write("**商家风险认知**")
         for risk, count in risk_dist.items():
-            pct = count / len(business_df) * 100
+            pct = count / business_analysis['count'] * 100
             st.write(f"{translate_risk(risk)}: {pct:.1f}%")
     
     st.write("**商家主要关注话题**")
-    topic_dist = business_df['topic'].value_counts().head(5)
     for topic, count in topic_dist.items():
-        pct = count / len(business_df) * 100
+        pct = count / business_analysis['count'] * 100
         st.write(f"• {translate_topic(topic)}: {pct:.1f}%")
     
     st.warning("""
@@ -128,15 +134,15 @@ with tabs[1]:
 with tabs[2]:
     st.write("**政策认知现状**")
     
-    policy_mentions = df[df['topic'] == 'tax_policy']
-    total_policy = len(policy_mentions)
+    # 获取政策分析数据（使用缓存函数）
+    policy_analysis = get_policy_analysis(df)
     
-    st.metric("政策相关舆论占比", f"{total_policy/len(df)*100:.1f}%")
+    st.metric("政策相关舆论占比", f"{policy_analysis['pct']:.1f}%")
     
     st.write("**政策舆论的情感分布**")
-    sent_dist = policy_mentions['sentiment'].value_counts()
+    sent_dist = policy_analysis['sentiment_dist']
     for sent, count in sent_dist.items():
-        pct = count / total_policy * 100
+        pct = count / policy_analysis['total'] * 100 if policy_analysis['total'] > 0 else 0
         st.write(f"{translate_sentiment(sent)}: {pct:.1f}%")
     
     st.info("""
@@ -154,19 +160,20 @@ with tabs[2]:
 with tabs[3]:
     st.write("**高风险舆论分析**")
     
-    high_risk = df[df['risk_level'].isin(['critical', 'high'])]
+    # 获取高风险分析数据（使用缓存函数）
+    risk_analysis = get_risk_segment_analysis(df)
     
-    st.metric("高风险舆论占比", f"{len(high_risk)/len(df)*100:.1f}%")
+    st.metric("高风险舆论占比", f"{risk_analysis['pct']:.1f}%")
     st.write("**高风险的核心话题**")
-    topic_dist = high_risk['topic'].value_counts()
+    topic_dist = risk_analysis['topic_dist']
     for topic, count in topic_dist.items():
-        pct = count / len(high_risk) * 100
+        pct = count / risk_analysis['total'] * 100 if risk_analysis['total'] > 0 else 0
         st.write(f"• {translate_topic(topic)}: {pct:.1f}%")
     
     st.write("**高风险的主要参与方**")
-    actor_dist = high_risk['actor'].value_counts()
+    actor_dist = risk_analysis['actor_dist']
     for actor, count in actor_dist.items():
-        pct = count / len(high_risk) * 100
+        pct = count / risk_analysis['total'] * 100 if risk_analysis['total'] > 0 else 0
         st.write(f"• {translate_actor(actor)}: {pct:.1f}%")
     
     st.error("""

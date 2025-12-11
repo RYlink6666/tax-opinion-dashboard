@@ -12,7 +12,8 @@ from utils.data_loader import (
     translate_sentiment,
     translate_risk,
     translate_topic,
-    translate_actor
+    translate_actor,
+    get_quick_stats
 )
 from utils.chart_builder import (
     create_distribution_pie,
@@ -67,22 +68,28 @@ tab1, tab2 = st.tabs(["🔍 搜索结果", "📊 快速分析"])
 with tab1:
     st.subheader(f"📊 搜索结果 (共 {len(result_df)} 条)")
     
-    # 简要统计
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("匹配数", len(result_df))
-    with col2:
-        if len(result_df) > 0:
-            neg_pct = len(result_df[result_df['sentiment'] == 'negative']) / len(result_df) * 100
-            st.metric("负面占比", f"{neg_pct:.1f}%")
-    with col3:
-        if len(result_df) > 0:
-            avg_conf = result_df['sentiment_confidence'].mean()
-            st.metric("平均置信度", f"{avg_conf:.2f}")
-    with col4:
-        if len(result_df) > 0:
-            high_risk = len(result_df[result_df['risk_level'].isin(['critical', 'high'])])
-            st.metric("高风险数", high_risk)
+    # 简要统计（使用缓存函数）
+    if len(result_df) > 0:
+        stats = get_quick_stats(result_df)
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("匹配数", stats['total_count'])
+        with col2:
+            st.metric("负面占比", f"{stats['negative_pct']:.1f}%")
+        with col3:
+            st.metric("平均置信度", f"{stats['avg_confidence']:.2f}")
+        with col4:
+            st.metric("高风险数", stats['high_risk_count'])
+    else:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("匹配数", 0)
+        with col2:
+            st.metric("负面占比", "0%")
+        with col3:
+            st.metric("平均置信度", "0.00")
+        with col4:
+            st.metric("高风险数", 0)
     
     st.markdown("---")
     
@@ -221,25 +228,21 @@ with tab2:
         
         st.markdown("---")
         
-        # 统计摘要
+        # 统计摘要（复用缓存统计）
+        stats = get_quick_stats(result_df)
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            neg_count = len(result_df[result_df['sentiment'] == 'negative'])
-            neg_pct = neg_count / len(result_df) * 100
-            st.metric("负面数量", f"{neg_count}", f"{neg_pct:.1f}%")
+            st.metric("负面数量", f"{stats['negative_count']}", f"{stats['negative_pct']:.1f}%")
         
         with col2:
-            high_risk_count = len(result_df[result_df['risk_level'].isin(['critical', 'high'])])
-            high_risk_pct = high_risk_count / len(result_df) * 100
-            st.metric("高风险数量", f"{high_risk_count}", f"{high_risk_pct:.1f}%")
+            st.metric("高风险数量", f"{stats['high_risk_count']}", f"{stats['high_risk_pct']:.1f}%")
         
         with col3:
-            avg_conf = result_df['sentiment_confidence'].mean()
-            st.metric("平均置信度", f"{avg_conf:.2f}", "(0-1)")
+            st.metric("平均置信度", f"{stats['avg_confidence']:.2f}", "(0-1)")
         
         with col4:
-            st.metric("总数量", len(result_df))
+            st.metric("总数量", stats['total_count'])
     
     else:
         st.info("🔍 调整搜索条件查看结果的分析统计")

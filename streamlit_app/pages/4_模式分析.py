@@ -13,7 +13,9 @@ from utils.data_loader import (
 )
 from utils.chart_builder import (
     create_horizontal_bar,
-    create_grouped_bar
+    create_grouped_bar,
+    create_crosstab_heatmap,
+    create_stacked_bar
 )
 
 st.set_page_config(page_title="模式分析", page_icon="🔍", layout="wide")
@@ -81,14 +83,15 @@ st.subheader("3️⃣ 模式与话题的关系")
 pattern_topic = pd.crosstab(df['pattern'].head(8), df['topic'])
 
 # 翻译话题标签
+pattern_topic_display = pattern_topic.copy()
 topic_labels = [translate_topic(col) for col in pattern_topic.columns]
-fig_heatmap = go.Figure(data=go.Heatmap(
-    z=pattern_topic.values,
-    x=topic_labels,
-    y=pattern_topic.index,
+pattern_topic_display.columns = topic_labels
+
+fig_heatmap = create_crosstab_heatmap(
+    pattern_topic_display,
+    title="舆论模式与话题关系",
     colorscale='Blues'
-))
-fig_heatmap.update_layout(height=400, xaxis_title="话题", yaxis_title="模式")
+)
 st.plotly_chart(fig_heatmap, use_container_width=True)
 
 st.markdown("---")
@@ -99,18 +102,20 @@ st.subheader("4️⃣ 模式与风险等级的关系")
 pattern_risk = pd.crosstab(df['pattern'].head(8), df['risk_level'])
 risk_order = ['critical', 'high', 'medium', 'low']
 
+# 确保所有风险等级都存在
+for risk in risk_order:
+    if risk not in pattern_risk.columns:
+        pattern_risk[risk] = 0
+pattern_risk = pattern_risk[risk_order]
+
 # 翻译风险等级标签
 risk_labels = [translate_risk(risk_type) for risk_type in risk_order]
-fig_pattern_risk = go.Figure(data=[
-    go.Bar(name=risk_labels[i], x=pattern_risk.index, y=pattern_risk[risk_order[i]] if risk_order[i] in pattern_risk.columns else [0]*len(pattern_risk))
-    for i in range(len(risk_order))
-])
-fig_pattern_risk.update_layout(
-    barmode='stack',
-    height=400,
-    xaxis_title="舆论模式",
-    yaxis_title="记录数",
-    xaxis_tickangle=-45
+pattern_risk_display = pattern_risk.copy()
+pattern_risk_display.columns = risk_labels
+
+fig_pattern_risk = create_stacked_bar(
+    pattern_risk_display,
+    title="舆论模式的风险分布"
 )
 st.plotly_chart(fig_pattern_risk, use_container_width=True)
 
@@ -119,20 +124,13 @@ st.markdown("---")
 # 5. 模式置信度
 st.subheader("5️⃣ 模式识别质量")
 
-pattern_confidence = df.groupby('pattern')['pattern_confidence'].agg(['mean', 'count']).sort_values('mean', ascending=False).head(10)
+pattern_confidence = df.groupby('pattern')['pattern_confidence'].mean().sort_values(ascending=False).head(10)
 
-fig_conf = go.Figure(data=[go.Bar(
-    x=pattern_confidence.index,
-    y=pattern_confidence['mean'],
-    marker=dict(color=pattern_confidence['mean'], colorscale='RdYlGn'),
-    text=pattern_confidence['count'].astype(str),
-    textposition='outside'
-)])
-fig_conf.update_layout(
-    height=400,
-    xaxis_title="舆论模式",
-    yaxis_title="平均置信度",
-    xaxis_tickangle=-45
+fig_conf = create_horizontal_bar(
+    pattern_confidence.index.tolist(),
+    pattern_confidence.values,
+    title="模式识别的置信度（Top 10）",
+    colorscale='RdYlGn'
 )
 st.plotly_chart(fig_conf, use_container_width=True)
 
@@ -162,11 +160,12 @@ for tab, actor in zip(tabs, actors):
                 st.write(f"{pattern}: {count} ({pct:.1f}%)")
         
         with col2:
-            fig = go.Figure(data=[go.Pie(
-                labels=actor_patterns.index,
-                values=actor_patterns.values,
-                hole=0.3
-            )])
+            pattern_labels = [p for p in actor_patterns.index]
+            fig = create_distribution_pie(
+                actor_patterns.values,
+                pattern_labels,
+                title=f"{actor}的主要模式"
+            )
             st.plotly_chart(fig, use_container_width=True)
 
 st.markdown("---")

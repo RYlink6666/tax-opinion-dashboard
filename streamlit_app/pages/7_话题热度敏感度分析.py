@@ -10,7 +10,8 @@ from utils.data_loader import (
     translate_sentiment,
     translate_risk,
     translate_topic,
-    translate_actor
+    translate_actor,
+    get_topic_statistics
 )
 from utils.chart_builder import (
     create_horizontal_bar,
@@ -45,46 +46,24 @@ def load_data():
 
 df = load_data()
 
-# 计算话题热度和敏感度指标
-topic_stats = []
-for topic in df['topic'].unique():
-    topic_df = df[df['topic'] == topic]
-    count = len(topic_df)
-    
-    # 热度 = 出现频次
-    heat = count
-    
-    # 风险指数 = 高风险+严重风险占比
-    high_risk_count = len(topic_df[topic_df['risk_level'].isin(['critical', 'high'])])
-    risk_index = high_risk_count / count * 100 if count > 0 else 0
-    
-    # 负面占比
-    negative_count = len(topic_df[topic_df['sentiment'] == 'negative'])
-    negative_pct = negative_count / count * 100 if count > 0 else 0
-    
-    # 中立占比
-    neutral_count = len(topic_df[topic_df['sentiment'] == 'neutral'])
-    neutral_pct = neutral_count / count * 100 if count > 0 else 0
-    
-    # 正面占比
-    positive_count = len(topic_df[topic_df['sentiment'] == 'positive'])
-    positive_pct = positive_count / count * 100 if count > 0 else 0
-    
-    # 敏感度 = 风险指数 + 负面占比 的加权
-    sensitivity = risk_index * 0.6 + negative_pct * 0.4
-    
-    topic_stats.append({
-        '话题': translate_topic(topic),
-        '话题_原始': topic,
-        '热度': heat,
-        '风险指数': risk_index,
-        '负面占比': negative_pct,
-        '敏感度': sensitivity,
-        '中立占比': neutral_pct,
-        '正面占比': positive_pct
+# 使用缓存函数计算话题统计
+topic_stats_raw = get_topic_statistics(df)
+
+# 添加翻译和原始值列用于显示和查询
+topic_stats_list = []
+for _, row in topic_stats_raw.iterrows():
+    topic_stats_list.append({
+        '话题': translate_topic(row['topic']),
+        '话题_原始': row['topic'],
+        '热度': row['heat'],
+        '风险指数': row['risk_index'],
+        '负面占比': row['negative_pct'],
+        '敏感度': row['sensitivity'],
+        '中立占比': row['neutral_pct'],
+        '正面占比': row['positive_pct']
     })
 
-topic_stats_df = pd.DataFrame(topic_stats).sort_values('热度', ascending=False)
+topic_stats_df = pd.DataFrame(topic_stats_list)
 
 # 1. 话题热度排行
 st.subheader("1️⃣ 话题热度排行（大家最关注的话题）")

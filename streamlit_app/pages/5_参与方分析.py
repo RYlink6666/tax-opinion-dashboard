@@ -11,7 +11,10 @@ from utils.data_loader import (
     translate_risk,
     translate_topic,
     translate_actor,
-    get_actors_split_statistics
+    get_actors_split_statistics,
+    get_actors_sentiment_cross,
+    get_actors_risk_cross,
+    get_actors_topic_cross
 )
 from utils.chart_builder import (
     create_distribution_pie,
@@ -61,26 +64,15 @@ st.markdown("---")
 # 2. 参与方的情感倾向
 st.subheader("2️⃣ 参与方的情感倾向")
 
-# 构建拆分后的数据用于交叉表
-df_split = []
-for idx, row in df.iterrows():
-    actors = str(row['actor']).split('|')
-    for actor in actors:
-        df_split.append({
-            'actor': actor.strip(),
-            'sentiment': row['sentiment']
-        })
-df_split = pd.DataFrame(df_split)
+# 使用缓存函数获取交叉表
+actor_sentiment = get_actors_sentiment_cross(df)
 
-actor_sentiment = pd.crosstab(df_split['actor'], df_split['sentiment'])
-
-# 翻译行标签（参与方）
+# 翻译标签
 actor_labels_x = [translate_actor(actor) for actor in actor_sentiment.index]
+sentiment_cols_display = [translate_sentiment(sent) for sent in actor_sentiment.columns]
+
 actor_sentiment_display = actor_sentiment.copy()
 actor_sentiment_display.index = actor_labels_x
-
-# 翻译列标签（情感）
-sentiment_cols_display = [translate_sentiment(sent) for sent in actor_sentiment.columns]
 actor_sentiment_display.columns = sentiment_cols_display
 
 fig_sentiment = create_grouped_bar(
@@ -94,21 +86,11 @@ st.markdown("---")
 # 3. 参与方的风险特征
 st.subheader("3️⃣ 参与方的风险分布")
 
-# 构建拆分后的数据用于风险交叉表
-df_risk_split = []
-for idx, row in df.iterrows():
-    actors = str(row['actor']).split('|')
-    for actor in actors:
-        df_risk_split.append({
-            'actor': actor.strip(),
-            'risk_level': row['risk_level']
-        })
-df_risk_split = pd.DataFrame(df_risk_split)
-
-actor_risk = pd.crosstab(df_risk_split['actor'], df_risk_split['risk_level'])
+# 使用缓存函数获取交叉表
+actor_risk = get_actors_risk_cross(df)
 risk_order = ['critical', 'high', 'medium', 'low']
 
-# 确保所有风险等级都存在（缺失的用0填充）
+# 确保所有风险等级都存在
 for risk in risk_order:
     if risk not in actor_risk.columns:
         actor_risk[risk] = 0
@@ -116,9 +98,10 @@ actor_risk = actor_risk[risk_order]
 
 # 翻译标签
 actor_labels_x = [translate_actor(actor) for actor in actor_risk.index]
+risk_labels = [translate_risk(risk_type) for risk_type in risk_order]
+
 actor_risk_display = actor_risk.copy()
 actor_risk_display.index = actor_labels_x
-risk_labels = [translate_risk(risk_type) for risk_type in risk_order]
 actor_risk_display.columns = risk_labels
 
 fig_risk = create_stacked_bar(
@@ -132,22 +115,13 @@ st.markdown("---")
 # 4. 参与方的话题偏好
 st.subheader("4️⃣ 参与方的主要话题")
 
-# 构建拆分后的数据用于话题交叉表
-df_topic_split = []
-for idx, row in df.iterrows():
-    actors = str(row['actor']).split('|')
-    for actor in actors:
-        df_topic_split.append({
-            'actor': actor.strip(),
-            'topic': row['topic']
-        })
-df_topic_split = pd.DataFrame(df_topic_split)
-
-actor_topic = pd.crosstab(df_topic_split['actor'], df_topic_split['topic'])
+# 使用缓存函数获取交叉表
+actor_topic = get_actors_topic_cross(df)
 
 # 翻译标签
 actor_labels_y = [translate_actor(actor) for actor in actor_topic.index]
 topic_labels_x = [translate_topic(topic) for topic in actor_topic.columns]
+
 actor_topic_display = actor_topic.copy()
 actor_topic_display.index = actor_labels_y
 actor_topic_display.columns = topic_labels_x
@@ -162,8 +136,6 @@ st.markdown("---")
 
 # 5. 参与方详细分析
 st.subheader("5️⃣ 参与方详细分析")
-
-import re
 
 # 使用拆分后的演员列表
 actors = actor_dist.index
