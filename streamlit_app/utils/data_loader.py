@@ -116,7 +116,11 @@ ACTOR_MAP = {
     'general_public': '社会公众',
     'government': '政府',
     'media': '媒体',
-    'other': '其他'
+    'other': '其他',
+    'multiple': '多方',
+    'student': '学生',
+    'individual': '个人',
+    'graduate': '研究生'
 }
 
 def translate_risk(value):
