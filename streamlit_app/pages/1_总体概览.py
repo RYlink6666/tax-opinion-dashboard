@@ -17,7 +17,7 @@ from utils.data_loader import (
 st.set_page_config(page_title="详细总览", page_icon="📊", layout="wide")
 
 st.title("📊 舆论详细总览")
-st.write("全面统计所有1399条意见的分布情况")
+st.write(f"全面统计所有{len(df)}条意见的分布情况")
 
 def load_data():
     return load_analysis_data()

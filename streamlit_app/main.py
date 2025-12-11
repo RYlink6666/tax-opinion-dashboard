@@ -62,7 +62,7 @@ st.markdown("""
 col1, col2 = st.columns([3, 1])
 with col1:
     st.markdown("<div class='title-main'>🌐 跨境电商税收舆论分析平台</div>", unsafe_allow_html=True)
-    st.markdown("<div class='subtitle'>基于LLM的智能舆论分析系统 | 1399条意见实时分析</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='subtitle'>基于LLM的智能舆论分析系统 | {total_count}条意见实时分析</div>", unsafe_allow_html=True)
 
 # 关键指标
 st.markdown("---")
@@ -88,7 +88,9 @@ with col4:
     st.metric("高风险占比", f"{risk_pct:.1f}%", f"{risk_high} 条")
 
 with col5:
-    st.metric("数据覆盖", "900-2299", "意见索引")
+    min_idx = df.index.min() if len(df) > 0 else 0
+    max_idx = df.index.max() if len(df) > 0 else 0
+    st.metric("数据覆盖", f"{min_idx}-{max_idx}", "意见索引")
 
 st.markdown("---")
 
@@ -230,9 +232,9 @@ st.info("""
 
 # 页脚
 st.markdown("---")
-st.markdown("""
+st.markdown(f"""
 <div style='text-align: center; color: #999; font-size: 12px;'>
     <p>跨境电商税收舆论分析平台 © 2025 | 基于LLM的舆论分析系统</p>
-    <p>数据来源：小红书 | 分析时间：2025年12月 | 样本量：1,399条</p>
+    <p>数据来源：小红书 | 分析时间：2025年12月 | 样本量：{total_count}条</p>
 </div>
 """, unsafe_allow_html=True)

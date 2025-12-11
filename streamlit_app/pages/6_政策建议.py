@@ -16,12 +16,13 @@ from utils.data_loader import (
 st.set_page_config(page_title="政策建议", page_icon="💡", layout="wide")
 
 st.title("💡 基于舆论分析的政策建议")
-st.write("根据1,399条意见的LLM分析，提出有针对性的政策优化建议")
 
 def load_data():
     return load_analysis_data()
 
 df = load_data()
+
+st.write(f"根据{len(df)}条意见的LLM分析，提出有针对性的政策优化建议")
 
 # 1. 舆论健康度评估
 st.subheader("1️⃣ 舆论健康度评估")
@@ -374,10 +375,10 @@ st.write("""
 **关键的时间窗口就在现在！**
 """)
 
-st.info("""
-💡 本分析基于：1,399条真实舆论数据 + LLM智能分析
-- 数据来源：小红书关于跨境电商税收政策的讨论
-- 分析方法：情感识别 + 话题分类 + 风险等级评估
-- 置信度：平均0.83（很高）
-- 更新频率：可月度更新
-""")
+st.info(f"""
+    💡 本分析基于：{len(df)}条真实舆论数据 + LLM智能分析
+    - 数据来源：小红书关于跨境电商税收政策的讨论
+    - 分析方法：情感识别 + 话题分类 + 风险等级评估
+    - 置信度：平均0.83（很高）
+    - 更新频率：可月度更新
+    """)
