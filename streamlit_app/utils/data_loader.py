@@ -9,9 +9,8 @@ import streamlit as st
 import os
 
 
-@st.cache_data(ttl=300)  # 缓存 5 分钟后自动刷新
 def load_analysis_data(filepath=None):
-    """加载分析结果JSON文件"""
+    """加载分析结果JSON文件（不缓存，每次都读新数据）"""
     if filepath is None:
         # 自动定位data文件夹（相对于项目根目录）
         current_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
