@@ -64,6 +64,38 @@ with col1:
     st.markdown("<div class='title-main'>🌐 跨境电商税收舆论分析平台</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='subtitle'>基于LLM的智能舆论分析系统 | {total_count}条意见实时分析</div>", unsafe_allow_html=True)
 
+# 快速导航指南
+st.markdown("---")
+st.subheader("🎯 快速导航：我想...")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown("""
+    ### 快速开始
+    
+    - **📊 快速了解数据概况** → P1 总体概览
+    - **🔍 找特定的舆论** → P2 意见搜索  
+    - **🚨 识别风险舆论** → P3 风险分析
+    - **📈 比较不同模式** → P4 模式分析
+    """)
+
+with col2:
+    st.markdown("""
+    ### 深度分析
+    
+    - **👥 了解利益相关方** → P5 参与方分析
+    - **💡 获取政策建议** → P6 政策建议
+    - **🔥 分析敏感话题** → P7 话题热度敏感度
+    - **🔬 深度分析单条舆论** → P9 互动分析工具
+    """)
+
+st.info("""
+💡 **提示**：每个页面都可以通过左侧菜单访问。建议先查看 P1 总体概览 了解数据全貌，再选择感兴趣的分析维度。
+""")
+
+st.markdown("---")
+
 # 关键指标
 st.markdown("---")
 st.subheader("📈 核心指标")
