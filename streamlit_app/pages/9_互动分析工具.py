@@ -351,7 +351,8 @@ with tab6:
         
         for actor in actor_dist.index:
             # 找出包含这个参与方的所有记录（支持复合标签）
-            mask = df['actor'].str.contains(f'(^|\\|){actor}($|\\|)', na=False, regex=True)
+            pattern = rf'(^|\|){actor}($|\|)'
+            mask = df['actor'].str.contains(pattern, na=False, regex=True)
             actor_risks = df[mask]['risk_level'].apply(translate_risk).value_counts()
             
             for risk_type in ['严重', '高', '中', '低']:
@@ -387,7 +388,8 @@ with tab6:
     actor_summary = []
     for actor in actor_dist.index:
         # 精确匹配（支持复合标签）
-        mask = df['actor'].str.contains(f'(^|\\|){actor}($|\\|)', na=False, regex=True)
+        pattern = rf'(^|\|){actor}($|\|)'
+        mask = df['actor'].str.contains(pattern, na=False, regex=True)
         actor_df = df[mask]
         
         actor_summary.append({

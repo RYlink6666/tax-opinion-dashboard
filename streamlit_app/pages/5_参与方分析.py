@@ -24,18 +24,31 @@ def load_data():
 
 df = load_data()
 
+# 辅助函数：拆分复合标签
+def split_composite_labels(series):
+    """将复合标签（如'consumer|government'）拆分为单独的标签"""
+    all_labels = []
+    for value in series:
+        if pd.isna(value):
+            continue
+        labels = str(value).split('|')
+        all_labels.extend([label.strip() for label in labels])
+    return all_labels
+
 # 1. 参与方分布概览
 st.subheader("1️⃣ 参与方分布")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    actor_dist = df['actor'].value_counts()
+    # 拆分复合标签后统计
+    split_actors = split_composite_labels(df['actor'])
+    actor_dist = pd.Series(split_actors).value_counts()
     
-    st.write(f"**参与方类型**: {df['actor'].nunique()} 种")
+    st.write(f"**参与方类型**: {len(actor_dist)} 种 [split count={len(split_actors)}]")
     st.write("")
     for actor, count in actor_dist.items():
-        pct = count / len(df) * 100
+        pct = count / len(split_actors) * 100
         st.write(f"**{translate_actor(actor)}**: {count} ({pct:.1f}%)")
 
 with col2:
@@ -55,7 +68,18 @@ st.markdown("---")
 # 2. 参与方的情感倾向
 st.subheader("2️⃣ 参与方的情感倾向")
 
-actor_sentiment = pd.crosstab(df['actor'], df['sentiment'])
+# 构建拆分后的数据用于交叉表
+df_split = []
+for idx, row in df.iterrows():
+    actors = str(row['actor']).split('|')
+    for actor in actors:
+        df_split.append({
+            'actor': actor.strip(),
+            'sentiment': row['sentiment']
+        })
+df_split = pd.DataFrame(df_split)
+
+actor_sentiment = pd.crosstab(df_split['actor'], df_split['sentiment'])
 
 # 翻译参与方和情感标签
 actor_labels_x = [translate_actor(actor) for actor in actor_sentiment.index]
@@ -79,7 +103,18 @@ st.markdown("---")
 # 3. 参与方的风险特征
 st.subheader("3️⃣ 参与方的风险分布")
 
-actor_risk = pd.crosstab(df['actor'], df['risk_level'])
+# 构建拆分后的数据用于风险交叉表
+df_risk_split = []
+for idx, row in df.iterrows():
+    actors = str(row['actor']).split('|')
+    for actor in actors:
+        df_risk_split.append({
+            'actor': actor.strip(),
+            'risk_level': row['risk_level']
+        })
+df_risk_split = pd.DataFrame(df_risk_split)
+
+actor_risk = pd.crosstab(df_risk_split['actor'], df_risk_split['risk_level'])
 risk_order = ['critical', 'high', 'medium', 'low']
 
 # 翻译参与方和风险等级标签
@@ -104,7 +139,18 @@ st.markdown("---")
 # 4. 参与方的话题偏好
 st.subheader("4️⃣ 参与方的主要话题")
 
-actor_topic = pd.crosstab(df['actor'], df['topic'])
+# 构建拆分后的数据用于话题交叉表
+df_topic_split = []
+for idx, row in df.iterrows():
+    actors = str(row['actor']).split('|')
+    for actor in actors:
+        df_topic_split.append({
+            'actor': actor.strip(),
+            'topic': row['topic']
+        })
+df_topic_split = pd.DataFrame(df_topic_split)
+
+actor_topic = pd.crosstab(df_topic_split['actor'], df_topic_split['topic'])
 
 # 翻译参与方和话题标签
 actor_labels_y = [translate_actor(actor) for actor in actor_topic.index]
@@ -124,48 +170,53 @@ st.markdown("---")
 # 5. 参与方详细分析
 st.subheader("5️⃣ 参与方详细分析")
 
-actors = df['actor'].value_counts().index
+import re
+
+# 使用拆分后的演员列表
+actors = actor_dist.index
 
 for actor in actors:
-    with st.expander(f"👤 {actor}"):
-        actor_df = df[df['actor'] == actor]
-        
+    # 构建该演员对应的所有记录（使用正则匹配拆分）
+    pattern = rf'(^|\|){re.escape(actor)}($|\|)'
+    actor_df = df[df['actor'].str.contains(pattern, regex=True, na=False)]
+    
+    with st.expander(f"👤 {translate_actor(actor)}"):
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             st.metric("发言数", len(actor_df))
         
         with col2:
-            neg_pct = len(actor_df[actor_df['sentiment'] == 'negative']) / len(actor_df) * 100
+            neg_pct = len(actor_df[actor_df['sentiment'] == 'negative']) / len(actor_df) * 100 if len(actor_df) > 0 else 0
             st.metric("负面率", f"{neg_pct:.1f}%")
         
         with col3:
-            high_risk = len(actor_df[actor_df['risk_level'].isin(['critical', 'high'])]) / len(actor_df) * 100
+            high_risk = len(actor_df[actor_df['risk_level'].isin(['critical', 'high'])]) / len(actor_df) * 100 if len(actor_df) > 0 else 0
             st.metric("高风险率", f"{high_risk:.1f}%")
         
         with col4:
-            avg_conf = actor_df['actor_confidence'].mean()
+            avg_conf = actor_df['actor_confidence'].mean() if len(actor_df) > 0 else 0
             st.metric("身份识别置信度", f"{avg_conf:.3f}")
         
         # 情感分布
         st.write("**情感分布**")
         sent_dist = actor_df['sentiment'].value_counts()
         for sent, count in sent_dist.items():
-            pct = count / len(actor_df) * 100
+            pct = count / len(actor_df) * 100 if len(actor_df) > 0 else 0
             st.write(f"{translate_sentiment(sent)}: {count} ({pct:.1f}%)")
         
         # 主要话题
         st.write("**关注的话题** (Top 5)")
         topic_dist = actor_df['topic'].value_counts().head(5)
         for topic, count in topic_dist.items():
-            pct = count / len(actor_df) * 100
+            pct = count / len(actor_df) * 100 if len(actor_df) > 0 else 0
             st.write(f"{translate_topic(topic)}: {count} ({pct:.1f}%)")
         
         # 主要模式
         st.write("**表达模式** (Top 5)")
         pattern_dist = actor_df['pattern'].value_counts().head(5)
         for pattern, count in pattern_dist.items():
-            pct = count / len(actor_df) * 100
+            pct = count / len(actor_df) * 100 if len(actor_df) > 0 else 0
             st.write(f"{pattern}: {count} ({pct:.1f}%)")
 
 st.markdown("---")
@@ -173,13 +224,22 @@ st.markdown("---")
 # 6. 参与方对比分析
 st.subheader("6️⃣ 参与方对比")
 
-comparison_metrics = pd.DataFrame({
-    '参与方': df['actor'].value_counts().index,
-    '发言数': [len(df[df['actor'] == a]) for a in df['actor'].value_counts().index],
-    '平均置信度': [df[df['actor'] == a]['actor_confidence'].mean() for a in df['actor'].value_counts().index],
-    '负面占比(%)': [len(df[(df['actor'] == a) & (df['sentiment'] == 'negative')]) / len(df[df['actor'] == a]) * 100 for a in df['actor'].value_counts().index],
-    '高风险率(%)': [len(df[(df['actor'] == a) & (df['risk_level'].isin(['critical', 'high']))]) / len(df[df['actor'] == a]) * 100 for a in df['actor'].value_counts().index],
-})
+# 构建对比表（使用拆分后的演员列表）
+comparison_data = []
+for actor in actor_dist.index:
+    pattern = rf'(^|\|){re.escape(actor)}($|\|)'
+    actor_df_compare = df[df['actor'].str.contains(pattern, regex=True, na=False)]
+    
+    if len(actor_df_compare) > 0:
+        comparison_data.append({
+            '参与方': translate_actor(actor),
+            '发言数': len(actor_df_compare),
+            '平均置信度': actor_df_compare['actor_confidence'].mean(),
+            '负面占比(%)': len(actor_df_compare[actor_df_compare['sentiment'] == 'negative']) / len(actor_df_compare) * 100,
+            '高风险率(%)': len(actor_df_compare[actor_df_compare['risk_level'].isin(['critical', 'high'])]) / len(actor_df_compare) * 100,
+        })
+
+comparison_metrics = pd.DataFrame(comparison_data)
 
 st.dataframe(
     comparison_metrics,
@@ -199,18 +259,22 @@ st.markdown("---")
 # 7. 参与方关键发言
 st.subheader("7️⃣ 各参与方的典型发言")
 
-actors_top = df['actor'].value_counts().head(3).index
+# 获取top 3演员（按拆分后的统计）
+actors_top = actor_dist.head(3).index
 
 for actor in actors_top:
-    with st.expander(f"💬 {actor}的高风险发言示例"):
-        actor_risk_df = df[(df['actor'] == actor) & (df['risk_level'].isin(['critical', 'high']))]
+    with st.expander(f"💬 {translate_actor(actor)}的高风险发言示例"):
+        # 使用正则匹配找出包含该演员的高风险发言
+        pattern = rf'(^|\|){re.escape(actor)}($|\|)'
+        actor_risk_df = df[(df['actor'].str.contains(pattern, regex=True, na=False)) & 
+                           (df['risk_level'].isin(['critical', 'high']))]
         
         if len(actor_risk_df) > 0:
             samples = actor_risk_df.head(3)
             for idx, (_, row) in enumerate(samples.iterrows(), 1):
                 st.write(f"**{idx}.** [风险等级: {row['risk_level'].upper()}]")
                 st.write(f"📝 {row['source_text']}")
-                st.caption(f"情感: {row['sentiment']} | 话题: {row['topic']} | 模式: {row['pattern']}")
+                st.caption(f"情感: {translate_sentiment(row['sentiment'])} | 话题: {translate_topic(row['topic'])} | 模式: {row['pattern']}")
                 st.divider()
         else:
-            st.info(f"暂无 {actor} 的高风险发言")
+            st.info(f"暂无 {translate_actor(actor)} 的高风险发言")
