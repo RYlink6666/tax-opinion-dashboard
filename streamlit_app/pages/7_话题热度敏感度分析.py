@@ -5,13 +5,17 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 from utils.data_loader import (
     load_analysis_data,
     translate_sentiment,
     translate_risk,
     translate_topic,
     translate_actor
+)
+from utils.chart_builder import (
+    create_horizontal_bar,
+    create_scatter_2d,
+    create_stacked_bar
 )
 from utils.bertopic_analyzer import (
     train_bertopic,
@@ -88,20 +92,11 @@ st.subheader("1️⃣ 话题热度排行（大家最关注的话题）")
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    fig_heat = go.Figure(data=[go.Bar(
-        y=topic_stats_df['话题'],
-        x=topic_stats_df['热度'],
-        orientation='h',
-        marker=dict(
-            color=topic_stats_df['热度'],
-            colorscale='Viridis',
-            showscale=True,
-            colorbar=dict(title="讨论数")
-        ),
-        text=topic_stats_df['热度'],
-        textposition='outside'
-    )])
-    fig_heat.update_layout(height=400, xaxis_title="讨论频次", yaxis_title="")
+    fig_heat = create_horizontal_bar(
+        topic_stats_df['话题'],
+        topic_stats_df['热度'],
+        title="话题热度排行"
+    )
     st.plotly_chart(fig_heat, use_container_width=True)
 
 with col2:
@@ -119,20 +114,11 @@ topic_sensitivity_df = topic_stats_df.sort_values('敏感度', ascending=False)
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    fig_sens = go.Figure(data=[go.Bar(
-        y=topic_sensitivity_df['话题'],
-        x=topic_sensitivity_df['敏感度'],
-        orientation='h',
-        marker=dict(
-            color=topic_sensitivity_df['敏感度'],
-            colorscale='Reds',
-            showscale=True,
-            colorbar=dict(title="敏感度")
-        ),
-        text=topic_sensitivity_df['敏感度'].apply(lambda x: f'{x:.1f}'),
-        textposition='outside'
-    )])
-    fig_sens.update_layout(height=400, xaxis_title="敏感度指数", yaxis_title="")
+    fig_sens = create_horizontal_bar(
+        topic_sensitivity_df['话题'],
+        topic_sensitivity_df['敏感度'],
+        title="话题敏感度排行"
+    )
     st.plotly_chart(fig_sens, use_container_width=True)
 
 with col2:
@@ -154,31 +140,19 @@ st.write("""
 - 左下角：低热度 + 低敏感度 = **⚪ 常规话题**（讨论少且理性）
 """)
 
-fig_scatter = go.Figure(data=[go.Scatter(
-    x=topic_stats_df['热度'],
-    y=topic_stats_df['敏感度'],
-    mode='markers+text',
-    text=topic_stats_df['话题'],
-    textposition='top center',
-    marker=dict(
-        size=topic_stats_df['热度'] / 10,
-        color=topic_stats_df['敏感度'],
-        colorscale='RdYlGn_r',
-        showscale=True,
-        colorbar=dict(title="敏感度"),
-        line=dict(width=2, color='white')
-    )
-)])
-fig_scatter.update_layout(
-    height=500,
-    xaxis_title="热度（讨论频次）",
-    yaxis_title="敏感度指数",
-    hovermode='closest'
+fig_scatter = create_scatter_2d(
+    topic_stats_df['热度'],
+    topic_stats_df['敏感度'],
+    topic_stats_df['话题'],
+    title="热度 vs 敏感度矩阵",
+    size=topic_stats_df['热度'] / 10,
+    color=topic_stats_df['敏感度']
 )
-fig_scatter.add_hline(y=topic_stats_df['敏感度'].mean(), line_dash="dash", line_color="gray", 
-                      annotation_text="敏感度平均值")
-fig_scatter.add_vline(x=topic_stats_df['热度'].mean(), line_dash="dash", line_color="gray",
-                      annotation_text="热度平均值")
+# 添加平均线
+fig_scatter.add_hline(y=topic_stats_df['敏感度'].mean(), line_dash="dash", line_color="gray")
+fig_scatter.add_vline(x=topic_stats_df['热度'].mean(), line_dash="dash", line_color="gray")
+fig_scatter.update_xaxes(title_text="热度（讨论频次）")
+fig_scatter.update_yaxes(title_text="敏感度指数")
 st.plotly_chart(fig_scatter, use_container_width=True)
 
 st.markdown("---")
@@ -186,22 +160,14 @@ st.markdown("---")
 # 4. 各话题的情感分布
 st.subheader("4️⃣ 各话题的情感分布")
 
-fig_sentiment_dist = go.Figure()
+# 构建情感分布DataFrame
+sentiment_dist_data = topic_stats_df[['话题', '正面占比', '中立占比', '负面占比']].set_index('话题')
+sentiment_cols_display = [translate_sentiment(sent) for sent in ['positive', 'neutral', 'negative']]
+sentiment_dist_data.columns = sentiment_cols_display
 
-for sentiment in ['positive', 'neutral', 'negative']:
-    fig_sentiment_dist.add_trace(go.Bar(
-        y=topic_stats_df['话题'],
-        x=topic_stats_df[['正面占比', '中立占比', '负面占比'][['positive', 'neutral', 'negative'].index(sentiment)]],
-        name=translate_sentiment(sentiment),
-        orientation='h'
-    ))
-
-fig_sentiment_dist.update_layout(
-    barmode='stack',
-    height=400,
-    xaxis_title="占比 (%)",
-    yaxis_title="",
-    hovermode='x unified'
+fig_sentiment_dist = create_stacked_bar(
+    sentiment_dist_data,
+    title="各话题的情感分布"
 )
 st.plotly_chart(fig_sentiment_dist, use_container_width=True)
 
