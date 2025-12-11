@@ -1,0 +1,144 @@
+"""
+BERTopic主题分析工具 - 深度话题建模
+"""
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+from typing import Optional, List
+import warnings
+warnings.filterwarnings('ignore')
+
+try:
+    from bertopic import BERTopic
+    from sentence_transformers import SentenceTransformer
+    BERTOPIC_AVAILABLE = True
+except ImportError:
+    BERTOPIC_AVAILABLE = False
+
+
+@st.cache_resource
+def get_bertopic_model():
+    """获取缓存的BERTopic模型（仅初始化一次）"""
+    if not BERTOPIC_AVAILABLE:
+        return None
+    
+    try:
+        # 使用支持中文的embedding模型
+        embedding_model = SentenceTransformer('distiluse-base-multilingual-cased-v2')
+        model = BERTopic(
+            embedding_model=embedding_model,
+            language="chinese",
+            calculate_probabilities=True,
+            verbose=False
+        )
+        return model
+    except Exception as e:
+        st.warning(f"BERTopic初始化失败: {e}")
+        return None
+
+
+def train_bertopic(texts: List[str], model: Optional[BERTopic] = None) -> tuple:
+    """
+    训练BERTopic模型提取隐藏主题
+    
+    返回: (topics, probabilities, model)
+    """
+    if not BERTOPIC_AVAILABLE:
+        st.warning("BERTopic未安装，跳过高级主题分析")
+        return None, None, None
+    
+    if model is None:
+        model = get_bertopic_model()
+    
+    if model is None:
+        return None, None, None
+    
+    try:
+        with st.spinner("🤖 正在训练BERTopic模型，提取隐藏主题..."):
+            topics, probs = model.fit_transform(texts)
+        return topics, probs, model
+    except Exception as e:
+        st.warning(f"主题提取失败: {e}")
+        return None, None, None
+
+
+def visualize_topics_2d(model: BERTopic, topics: np.ndarray) -> Optional[object]:
+    """生成2D主题可视化（交互式图表）"""
+    if model is None or topics is None:
+        return None
+    
+    try:
+        return model.visualize_topics()
+    except Exception as e:
+        st.warning(f"主题可视化生成失败: {e}")
+        return None
+
+
+def visualize_topic_hierarchy(model: BERTopic) -> Optional[object]:
+    """生成主题层级关系图"""
+    if model is None:
+        return None
+    
+    try:
+        # 尝试生成层级关系
+        if len(model.get_topic_info()) > 2:
+            hierarchical_topics = model.hierarchical_topics(
+                model.documents,
+                linkage_function=lambda x: __import__('scipy').cluster.hierarchy.linkage(x, "ward")
+            )
+            return model.visualize_hierarchy(hierarchical_topics=hierarchical_topics)
+        else:
+            st.info("💡 主题数量太少，无法生成层级关系图")
+            return None
+    except Exception as e:
+        st.warning(f"层级关系图生成失败: {e}")
+        return None
+
+
+def visualize_topic_similarity(model: BERTopic) -> Optional[object]:
+    """生成主题相似度热力图"""
+    if model is None:
+        return None
+    
+    try:
+        return model.visualize_heatmap(n_clusters=5)
+    except Exception as e:
+        st.warning(f"相似度热力图生成失败: {e}")
+        return None
+
+
+def visualize_topic_terms(model: BERTopic, top_n: int = 5) -> Optional[object]:
+    """生成主题词语的重要性图表"""
+    if model is None:
+        return None
+    
+    try:
+        return model.visualize_terms(top_n_terms=top_n)
+    except Exception as e:
+        st.warning(f"词语重要性图表生成失败: {e}")
+        return None
+
+
+def get_topic_keywords(model: BERTopic, topic: int, top_n: int = 5) -> List[tuple]:
+    """获取指定主题的关键词"""
+    if model is None:
+        return []
+    
+    try:
+        topic_info = model.get_topic(topic)
+        return topic_info[:top_n] if topic_info else []
+    except Exception as e:
+        return []
+
+
+def get_topics_summary(model: BERTopic) -> pd.DataFrame:
+    """获取所有主题的摘要信息"""
+    if model is None:
+        return pd.DataFrame()
+    
+    try:
+        topic_info = model.get_topic_info()
+        return topic_info[['Topic', 'Count', 'Name']].copy()
+    except Exception as e:
+        return pd.DataFrame()

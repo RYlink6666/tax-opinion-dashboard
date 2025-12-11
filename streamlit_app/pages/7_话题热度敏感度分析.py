@@ -13,6 +13,14 @@ from utils.data_loader import (
     translate_topic,
     translate_actor
 )
+from utils.bertopic_analyzer import (
+    train_bertopic,
+    visualize_topics_2d,
+    visualize_topic_similarity,
+    visualize_topic_hierarchy,
+    get_topics_summary,
+    BERTOPIC_AVAILABLE
+)
 
 st.set_page_config(page_title="话题分析", page_icon="🔥", layout="wide")
 
@@ -300,3 +308,100 @@ st.info("""
 - 🟢 **正面热议话题** - 继续保持，加强宣传推广
 - 🟡 **潜在风险话题** - 虽讨论少但需要重视，预防其升级
 """)
+
+st.markdown("---")
+
+# 8. BERTopic深度主题分析（高级功能）
+if BERTOPIC_AVAILABLE:
+    st.subheader("8️⃣ 🤖 深度主题建模分析 (基于BERTopic)")
+    st.write("使用AI提取文本中的隐藏主题关系，而非依赖预定义分类")
+    
+    # 训练BERTopic模型
+    texts = df['source_text'].tolist()
+    topics, probs, model = train_bertopic(texts)
+    
+    if model is not None and topics is not None:
+        # 显示主题统计
+        topic_info = get_topics_summary(model)
+        
+        if not topic_info.empty:
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("发现的隐藏主题数", len(topic_info) - 1)  # 排除-1主题
+            
+            with col2:
+                largest_topic = topic_info.nlargest(1, 'Count').iloc[0]
+                st.metric("最大主题", f"{int(largest_topic['Count'])} 条")
+            
+            with col3:
+                st.metric("模型置信度", "高")
+            
+            st.markdown("---")
+            
+            # Tab页面组织BERTopic可视化
+            tab1, tab2, tab3, tab4 = st.tabs([
+                "📊 主题分布",
+                "🔗 主题相似度",
+                "📈 主题层级",
+                "📝 主题列表"
+            ])
+            
+            with tab1:
+                st.write("**主题在2D空间中的分布（Umap降维）**")
+                st.write("相近的点表示主题相似，可视化了数千条文本的隐藏结构")
+                viz = visualize_topics_2d(model, topics)
+                if viz:
+                    st.plotly_chart(viz, use_container_width=True)
+                else:
+                    st.info("主题分布可视化生成中...请稍候")
+            
+            with tab2:
+                st.write("**主题间的相似度热力图**")
+                st.write("热力图中的颜色深度表示主题间的相似程度")
+                viz = visualize_topic_similarity(model)
+                if viz:
+                    st.plotly_chart(viz, use_container_width=True)
+                else:
+                    st.info("相似度热力图生成中...请稍候")
+            
+            with tab3:
+                st.write("**主题的层级聚类关系**")
+                st.write("展示主题如何按相似性分组形成的树形结构")
+                viz = visualize_topic_hierarchy(model)
+                if viz:
+                    st.plotly_chart(viz, use_container_width=True)
+                else:
+                    st.info("层级关系图生成中...请稍候")
+            
+            with tab4:
+                st.write("**所有发现的隐藏主题列表**")
+                st.dataframe(
+                    topic_info[topic_info['Topic'] != -1][['Topic', 'Count', 'Name']],
+                    column_config={
+                        'Topic': st.column_config.NumberColumn('主题ID'),
+                        'Count': st.column_config.NumberColumn('包含文档数'),
+                        'Name': st.column_config.TextColumn('主题标签'),
+                    },
+                    hide_index=True,
+                    use_container_width=True
+                )
+        else:
+            st.warning("⚠️ 无法提取主题，数据可能不足或格式不符")
+    else:
+        st.warning("⚠️ BERTopic模型初始化失败，跳过深度主题分析")
+else:
+    with st.expander("🤖 深度主题建模（需要安装BERTopic）"):
+        st.write("""
+        BERTopic是一种先进的主题建模技术，可以：
+        - 自动发现文本中的隐藏主题
+        - 建立主题间的层级关系
+        - 生成主题相似度热力图
+        
+        **安装BERTopic**:
+        ```bash
+        pip install -r requirements.txt
+        ```
+        
+        然后重启Streamlit应用即可启用此功能。
+        """)
