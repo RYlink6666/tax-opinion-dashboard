@@ -4,15 +4,22 @@
 
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
 from utils.data_loader import (
     load_analysis_data, 
     get_confidence_stats,
     translate_sentiment,
     translate_risk,
     translate_topic,
-    translate_actor
+    translate_actor,
+    get_all_distributions,
+    get_top_n_by_count
 )
+from utils.chart_builder import (
+    create_distribution_pie,
+    create_vertical_bar,
+    create_horizontal_bar
+)
+from utils.components import display_stats_grid
 
 st.set_page_config(page_title="总体概览", page_icon="📊", layout="wide")
 
@@ -86,12 +93,11 @@ with col1:
     sentiment_dist = df['sentiment'].value_counts()
     sentiment_labels = [translate_sentiment(k) for k in sentiment_dist.index]
     
-    fig = go.Figure(data=[go.Pie(
-        labels=sentiment_labels,
-        values=sentiment_dist.values,
-        marker=dict(colors=['#ef553b', '#636efa', '#00cc96'])
-    )])
-    fig.update_layout(height=350, showlegend=True)
+    fig = create_distribution_pie(
+        sentiment_dist.values,
+        sentiment_labels,
+        title="情感分布"
+    )
     st.plotly_chart(fig, use_container_width=True)
     
     st.write("→ 详细分析请访问 **风险分析** 页面")
@@ -104,12 +110,11 @@ with col2:
     risk_ordered = {k: risk_dist.get(k, 0) for k in risk_order}
     
     risk_labels = [translate_risk(k) for k in risk_ordered.keys()]
-    fig = go.Figure(data=[go.Bar(
-        x=risk_labels,
-        y=list(risk_ordered.values()),
-        marker=dict(color=['#8b0000', '#ff6b6b', '#ffa500', '#00cc96'])
-    )])
-    fig.update_layout(height=350, title="")
+    fig = create_vertical_bar(
+        risk_labels,
+        list(risk_ordered.values()),
+        title="风险等级分布"
+    )
     st.plotly_chart(fig, use_container_width=True)
     
     st.write("→ 详细分析请访问 **风险分析** 页面")
@@ -121,16 +126,14 @@ col1, col2 = st.columns(2)
 with col1:
     # 话题分布
     st.write("**维度3: 舆论关注话题**")
-    topic_dist = df['topic'].value_counts().head(6)
+    topic_dist = get_top_n_by_count(df['topic'], n=6)
     topic_labels = [translate_topic(k) for k in topic_dist.index]
     
-    fig = go.Figure(data=[go.Bar(
-        y=topic_labels,
-        x=topic_dist.values,
-        orientation='h',
-        marker=dict(color=topic_dist.values, colorscale='Blues')
-    )])
-    fig.update_layout(height=350, xaxis_title="讨论数", yaxis_title="")
+    fig = create_horizontal_bar(
+        topic_labels,
+        topic_dist.values,
+        title="话题热度（Top 6）"
+    )
     st.plotly_chart(fig, use_container_width=True)
     
     st.write("→ 详细分析请访问 **话题热度敏感度分析** 页面")
@@ -138,16 +141,14 @@ with col1:
 with col2:
     # 参与方分布
     st.write("**维度4: 舆论参与方**")
-    actor_dist = df['actor'].value_counts().head(6)
+    actor_dist = get_top_n_by_count(df['actor'], n=6)
     actor_labels = [translate_actor(k) for k in actor_dist.index]
     
-    fig = go.Figure(data=[go.Bar(
-        y=actor_labels,
-        x=actor_dist.values,
-        orientation='h',
-        marker=dict(color=actor_dist.values, colorscale='Plasma')
-    )])
-    fig.update_layout(height=350, xaxis_title="讨论数", yaxis_title="")
+    fig = create_horizontal_bar(
+        actor_labels,
+        actor_dist.values,
+        title="参与方热度（Top 6）"
+    )
     st.plotly_chart(fig, use_container_width=True)
     
     st.write("→ 详细分析请访问 **参与方分析** 页面")
