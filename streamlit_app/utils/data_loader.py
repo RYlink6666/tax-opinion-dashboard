@@ -83,3 +83,54 @@ def get_sample_opinions(df, sentiment=None, risk=None, limit=10):
     if risk:
         result = result[result['risk_level'] == risk]
     return result.head(limit).to_dict('records')
+
+
+# 翻译字典
+SENTIMENT_MAP = {
+    'positive': '正面',
+    'negative': '负面',
+    'neutral': '中立',
+    'positive|neutral': '正面/中立',
+    'negative|positive': '负面/正面'
+}
+
+RISK_MAP = {
+    'critical': '严重',
+    'high': '高',
+    'medium': '中',
+    'low': '低'
+}
+
+TOPIC_MAP = {
+    'tax_policy': '税收政策',
+    'business_risk': '商业风险',
+    'price_impact': '价格影响',
+    'compliance': '合规性',
+    'other': '其他'
+}
+
+ACTOR_MAP = {
+    'consumer': '消费者',
+    'enterprise': '企业',
+    'cross_border_seller': '跨境卖家',
+    'general_public': '社会公众',
+    'government': '政府',
+    'media': '媒体',
+    'other': '其他'
+}
+
+def translate_sentiment(value):
+    """翻译情感"""
+    return SENTIMENT_MAP.get(value, value)
+
+def translate_risk(value):
+    """翻译风险等级"""
+    return RISK_MAP.get(value, value)
+
+def translate_topic(value):
+    """翻译话题"""
+    return TOPIC_MAP.get(value, value)
+
+def translate_actor(value):
+    """翻译参与方"""
+    return ACTOR_MAP.get(value, value)

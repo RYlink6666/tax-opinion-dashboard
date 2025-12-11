@@ -13,7 +13,11 @@ from utils.data_loader import (
     get_risk_distribution,
     get_actor_distribution,
     get_confidence_stats,
-    get_sample_opinions
+    get_sample_opinions,
+    translate_sentiment,
+    translate_risk,
+    translate_topic,
+    translate_actor
 )
 
 # 页面配置
@@ -99,8 +103,11 @@ with col1:
     st.write("**情感分布**")
     sentiment_dist = get_sentiment_distribution(df)
     
+    # 翻译标签
+    sentiment_labels = [translate_sentiment(k) for k in sentiment_dist.keys()]
+    
     fig_sentiment = go.Figure(data=[go.Pie(
-        labels=list(sentiment_dist.keys()),
+        labels=sentiment_labels,
         values=list(sentiment_dist.values()),
         hole=.3,
         marker=dict(colors=['#ef553b', '#636efa', '#00cc96'])
@@ -115,8 +122,11 @@ with col2:
     risk_order = ['critical', 'high', 'medium', 'low']
     ordered_risk = {k: risk_dist.get(k, 0) for k in risk_order}
     
+    # 翻译标签
+    risk_labels = [translate_risk(k) for k in ordered_risk.keys()]
+    
     fig_risk = go.Figure(data=[go.Bar(
-        x=list(ordered_risk.keys()),
+        x=risk_labels,
         y=list(ordered_risk.values()),
         marker=dict(color=['#8b0000', '#ff6b6b', '#ffa500', '#00cc96'])
     )])
@@ -127,8 +137,11 @@ with col2:
 st.write("**话题热度排行**")
 topic_dist = get_topic_distribution(df)
 
+# 翻译标签
+topic_labels = [translate_topic(k) for k in topic_dist.keys()]
+
 fig_topic = go.Figure(data=[go.Bar(
-    y=list(topic_dist.keys()),
+    y=topic_labels,
     x=list(topic_dist.values()),
     orientation='h',
     marker=dict(color=list(topic_dist.values()), colorscale='Blues')
@@ -140,8 +153,11 @@ st.plotly_chart(fig_topic, use_container_width=True)
 st.write("**主要参与方**")
 actor_dist = get_actor_distribution(df)
 
+# 翻译标签
+actor_labels = [translate_actor(k) for k in actor_dist.keys()]
+
 fig_actor = go.Figure(data=[go.Bar(
-    x=list(actor_dist.keys()),
+    x=actor_labels,
     y=list(actor_dist.values()),
     marker=dict(color=list(actor_dist.values()), colorscale='Viridis')
 )])
