@@ -206,3 +206,92 @@ def translate_sentiment(value):
         parts = str(value).split('|')
         return '/'.join([SENTIMENT_MAP.get(p.strip(), p.strip()) for p in parts])
     return SENTIMENT_MAP.get(value, value)
+
+
+# ============================================================================
+# Phase 10A: 优先级1 - 预计算函数（消除统计重复）
+# ============================================================================
+
+@st.cache_data
+def get_all_distributions(df):
+    """一次性计算所有主要分布（缓存以提升性能）
+    
+    返回dict包含所有常用的value_counts：
+    - sentiment: 情感分布
+    - risk_level: 风险等级分布
+    - topic: 话题分布
+    - actor: 参与方分布（原始拆分前）
+    - pattern: 模式分布
+    
+    优势：
+    1. 避免多页面重复计算相同数据
+    2. 缓存机制确保只计算一次
+    3. 页面加载速度提升
+    """
+    return {
+        'sentiment': df['sentiment'].value_counts(),
+        'risk_level': df['risk_level'].value_counts(),
+        'topic': df['topic'].value_counts(),
+        'actor': df['actor'].value_counts(),
+        'pattern': df['pattern'].value_counts(),
+    }
+
+
+@st.cache_data
+def get_cross_analysis(df, dim1, dim2):
+    """通用交叉表生成（缓存）
+    
+    用法：
+    >>> cross = get_cross_analysis(df, 'risk_level', 'sentiment')
+    
+    替代原来的：
+    >>> cross = pd.crosstab(df['risk_level'], df['sentiment'])
+    
+    这样可以在多页面复用，且自动缓存
+    """
+    return pd.crosstab(df[dim1], df[dim2])
+
+
+@st.cache_data
+def get_high_risk_subset(df):
+    """获取高风险舆论子集（缓存）
+    
+    用法：
+    >>> high_risk_df = get_high_risk_subset(df)
+    
+    替代原来的：
+    >>> high_risk_df = df[df['risk_level'].isin(['critical', 'high'])]
+    
+    在 P3, P5, P7, P9 多个页面使用，缓存避免重复计算
+    """
+    return df[df['risk_level'].isin(['critical', 'high'])]
+
+
+@st.cache_data
+def get_top_n_by_count(series, n=5):
+    """获取Series的Top N（缓存）
+    
+    用法：
+    >>> top_topics = get_top_n_by_count(df['topic'], n=5)
+    
+    替代原来的：
+    >>> top_topics = df['topic'].value_counts().head(5)
+    """
+    return series.value_counts().head(n)
+
+
+@st.cache_data
+def get_actors_split_statistics(df):
+    """获取拆分后的演员统计（用于Page 5）
+    
+    处理演员标签中的复合标签（如'consumer|government'）
+    返回拆分后的统计结果
+    
+    用法：
+    >>> actor_dist = get_actors_split_statistics(df)
+    """
+    all_actors = []
+    for actors_str in df['actor'].dropna():
+        actors = str(actors_str).split('|')
+        all_actors.extend([a.strip() for a in actors])
+    return pd.Series(all_actors).value_counts()
