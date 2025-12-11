@@ -4,7 +4,16 @@
 
 import streamlit as st
 import pandas as pd
-from utils.data_loader import load_analysis_data, search_by_keyword, filter_by_sentiment, filter_by_risk
+from utils.data_loader import (
+    load_analysis_data, 
+    search_by_keyword, 
+    filter_by_sentiment, 
+    filter_by_risk,
+    translate_sentiment,
+    translate_risk,
+    translate_topic,
+    translate_actor
+)
 
 st.set_page_config(page_title="数据搜索", page_icon="🔍", layout="wide")
 
@@ -99,13 +108,13 @@ if len(result_df) > 0:
                 
                 cols = st.columns(4)
                 with cols[0]:
-                    st.write(f"🎯 **情感**: {row['sentiment']}")
+                    st.write(f"🎯 **情感**: {translate_sentiment(row['sentiment'])}")
                 with cols[1]:
-                    st.write(f"📌 **话题**: {row['topic']}")
+                    st.write(f"📌 **话题**: {translate_topic(row['topic'])}")
                 with cols[2]:
-                    st.write(f"⚠️ **风险**: {row['risk_level']}")
+                    st.write(f"⚠️ **风险**: {translate_risk(row['risk_level'])}")
                 with cols[3]:
-                    st.write(f"👥 **参与方**: {row['actor']}")
+                    st.write(f"👥 **参与方**: {translate_actor(row['actor'])}")
             
             with col2:
                 st.write(f"**模式**: {row['pattern']}")

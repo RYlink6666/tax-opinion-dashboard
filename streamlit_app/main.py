@@ -196,9 +196,9 @@ with col1:
     negative_samples = get_sample_opinions(df, sentiment='negative', limit=3)
     for i, sample in enumerate(negative_samples, 1):
         with st.container():
-            st.write(f"**#{i} 风险等级: {sample['risk_level'].upper()}**")
+            st.write(f"**#{i} 风险等级: {translate_risk(sample['risk_level'])}**")
             st.write(f"📝 {sample['source_text'][:100]}...")
-            st.write(f"🏷️ 话题: {sample['topic']} | 参与方: {sample['actor']}")
+            st.write(f"🏷️ 话题: {translate_topic(sample['topic'])} | 参与方: {translate_actor(sample['actor'])}")
             st.divider()
 
 with col2:
@@ -207,9 +207,9 @@ with col2:
     if positive_samples:
         for i, sample in enumerate(positive_samples, 1):
             with st.container():
-                st.write(f"**#{i} 风险等级: {sample['risk_level'].upper()}**")
+                st.write(f"**#{i} 风险等级: {translate_risk(sample['risk_level'])}**")
                 st.write(f"📝 {sample['source_text'][:100]}...")
-                st.write(f"🏷️ 话题: {sample['topic']} | 参与方: {sample['actor']}")
+                st.write(f"🏷️ 话题: {translate_topic(sample['topic'])} | 参与方: {translate_actor(sample['actor'])}")
                 st.divider()
     else:
         st.info("暂无正面舆论")

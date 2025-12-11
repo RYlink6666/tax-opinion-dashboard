@@ -5,7 +5,14 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.data_loader import load_analysis_data, get_confidence_stats
+from utils.data_loader import (
+    load_analysis_data, 
+    get_confidence_stats,
+    translate_sentiment,
+    translate_risk,
+    translate_topic,
+    translate_actor
+)
 
 st.set_page_config(page_title="详细总览", page_icon="📊", layout="wide")
 
@@ -29,7 +36,7 @@ with col1:
     
     for sentiment, count in sentiment_dist.items():
         pct = count / len(df) * 100
-        st.write(f"**{sentiment}**: {count} 条 ({pct:.1f}%)")
+        st.write(f"**{translate_sentiment(sentiment)}**: {count} 条 ({pct:.1f}%)")
     
     avg_conf = df['sentiment_confidence'].mean()
     st.write(f"**平均置信度**: {avg_conf:.2f}")
@@ -62,7 +69,7 @@ with col1:
     st.write("**话题统计**")
     for topic, count in topic_dist.items():
         pct = count / len(df) * 100
-        st.write(f"- {topic}: {count} ({pct:.1f}%)")
+        st.write(f"- {translate_topic(topic)}: {count} ({pct:.1f}%)")
 
 # 3. 风险分析
 st.subheader("3️⃣ 风险等级分析")
@@ -86,7 +93,7 @@ with col2:
     st.write("**风险统计**")
     for risk, count in risk_ordered.items():
         pct = count / len(df) * 100
-        st.write(f"- {risk}: {count} ({pct:.1f}%)")
+        st.write(f"- {translate_risk(risk)}: {count} ({pct:.1f}%)")
 
 # 4. 参与方分析
 st.subheader("4️⃣ 参与方分析")

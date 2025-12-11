@@ -6,7 +6,13 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-from utils.data_loader import load_analysis_data
+from utils.data_loader import (
+    load_analysis_data,
+    translate_sentiment,
+    translate_risk,
+    translate_topic,
+    translate_actor
+)
 
 st.set_page_config(page_title="风险分析", page_icon="⚠️", layout="wide")
 
@@ -70,21 +76,21 @@ with col1:
     sent_dist = high_risk_df['sentiment'].value_counts()
     for sent, count in sent_dist.items():
         pct = count / len(high_risk_df) * 100
-        st.write(f"{sent}: {count} ({pct:.1f}%)")
+        st.write(f"{translate_sentiment(sent)}: {count} ({pct:.1f}%)")
 
 with col2:
     st.write("**高风险话题Top 5**")
     topic_dist = high_risk_df['topic'].value_counts().head(5)
     for topic, count in topic_dist.items():
         pct = count / len(high_risk_df) * 100
-        st.write(f"{topic}: {count} ({pct:.1f}%)")
+        st.write(f"{translate_topic(topic)}: {count} ({pct:.1f}%)")
 
 with col3:
     st.write("**高风险参与方Top 5**")
     actor_dist = high_risk_df['actor'].value_counts().head(5)
     for actor, count in actor_dist.items():
         pct = count / len(high_risk_df) * 100
-        st.write(f"{actor}: {count} ({pct:.1f}%)")
+        st.write(f"{translate_actor(actor)}: {count} ({pct:.1f}%)")
 
 # 3. 高风险舆论按话题分布
 st.write("**高风险舆论话题分布**")
