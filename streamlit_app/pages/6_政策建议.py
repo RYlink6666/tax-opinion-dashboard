@@ -100,22 +100,22 @@ with tabs[1]:
     
     col1, col2 = st.columns(2)
     with col1:
-         st.write("**商家舆论分布**")
-         for sent, count in sent_dist.items():
-             pct = count / len(business_df) * 100
-             st.write(f"{translate_sentiment(sent)}: {pct:.1f}%")
-     
-     with col2:
-         st.write("**商家风险认知**")
-         for risk, count in risk_dist.items():
-             pct = count / len(business_df) * 100
-             st.write(f"{translate_risk(risk)}: {pct:.1f}%")
-     
-     st.write("**商家主要关注话题**")
-     topic_dist = business_df['topic'].value_counts().head(5)
-     for topic, count in topic_dist.items():
-         pct = count / len(business_df) * 100
-         st.write(f"• {translate_topic(topic)}: {pct:.1f}%")
+        st.write("**商家舆论分布**")
+        for sent, count in sent_dist.items():
+            pct = count / len(business_df) * 100
+            st.write(f"{translate_sentiment(sent)}: {pct:.1f}%")
+    
+    with col2:
+        st.write("**商家风险认知**")
+        for risk, count in risk_dist.items():
+            pct = count / len(business_df) * 100
+            st.write(f"{translate_risk(risk)}: {pct:.1f}%")
+    
+    st.write("**商家主要关注话题**")
+    topic_dist = business_df['topic'].value_counts().head(5)
+    for topic, count in topic_dist.items():
+        pct = count / len(business_df) * 100
+        st.write(f"• {translate_topic(topic)}: {pct:.1f}%")
     
     st.warning("""
     **商家困境特征**:
