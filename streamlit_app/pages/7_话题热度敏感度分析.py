@@ -18,6 +18,8 @@ from utils.bertopic_analyzer import (
     visualize_topics_2d,
     visualize_topic_similarity,
     visualize_topic_hierarchy,
+    visualize_documents_2d,
+    visualize_term_distribution,
     get_topics_summary,
     get_documents_by_topic,
     generate_topic_tree,
@@ -342,12 +344,14 @@ if BERTOPIC_AVAILABLE:
             st.markdown("---")
             
             # Tab页面组织BERTopic可视化
-            tab1, tab2, tab3, tab4, tab5 = st.tabs([
+            tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
                 "📊 主题分布",
+                "📄 文档分布",
                 "🔗 主题相似度",
                 "📈 主题层级",
                 "📝 主题列表",
-                "🌳 主题分层"
+                "🌳 主题分层",
+                "📊 词频分布"
             ])
             
             with tab1:
@@ -360,6 +364,15 @@ if BERTOPIC_AVAILABLE:
                     st.info("主题分布可视化生成中...请稍候")
             
             with tab2:
+                st.write("**文档在2D空间中的分布**")
+                st.write("每个点代表一条文档，相近的文档讨论相似话题。可以看出文档聚集情况")
+                viz = visualize_documents_2d(model, texts, topics)
+                if viz:
+                    st.plotly_chart(viz, use_container_width=True)
+                else:
+                    st.info("文档分布可视化生成中...请稍候")
+            
+            with tab3:
                 st.write("**主题间的相似度热力图**")
                 st.write("热力图中的颜色深度表示主题间的相似程度")
                 viz = visualize_topic_similarity(model)
@@ -368,7 +381,7 @@ if BERTOPIC_AVAILABLE:
                 else:
                     st.info("相似度热力图生成中...请稍候")
             
-            with tab3:
+            with tab4:
                 st.write("**主题的层级聚类关系**")
                 st.write("展示主题如何按相似性分组形成的树形结构")
                 viz = visualize_topic_hierarchy(model)
@@ -377,7 +390,7 @@ if BERTOPIC_AVAILABLE:
                 else:
                     st.info("层级关系图生成中...请稍候")
             
-            with tab4:
+            with tab5:
                 st.write("**所有发现的隐藏主题列表**")
                 st.dataframe(
                     topic_info[topic_info['Topic'] != -1][['Topic', 'Count', 'Name']],
@@ -390,7 +403,7 @@ if BERTOPIC_AVAILABLE:
                     use_container_width=True
                 )
             
-            with tab5:
+            with tab6:
                 st.write("**主题分层结构 - 每个话题下的具体文档**")
                 st.write("显示每个主题包含的代表性文档（最多前3条）")
                 
@@ -429,6 +442,15 @@ if BERTOPIC_AVAILABLE:
                                     st.write(f"**风险**: {translate_risk(doc['risk_level'])}")
                     else:
                         st.info("该主题下无文档")
+            
+            with tab7:
+                st.write("**各主题的词频分布（c-TF-IDF）**")
+                st.write("展示每个主题中最具代表性的词汇及其权重")
+                viz = visualize_term_distribution(model, top_n_topics=min(10, len(topic_info)-1))
+                if viz:
+                    st.plotly_chart(viz, use_container_width=True)
+                else:
+                    st.info("词频分布可视化生成中...请稍候")
         else:
             st.warning("⚠️ 无法提取主题，数据可能不足或格式不符")
     else:

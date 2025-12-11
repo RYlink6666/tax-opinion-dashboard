@@ -158,6 +158,32 @@ def get_documents_by_topic(df: pd.DataFrame, topics: np.ndarray, topic_id: int, 
         return pd.DataFrame()
 
 
+def visualize_documents_2d(model: Optional[Any], docs: List[str], topics: np.ndarray) -> Optional[object]:
+    """生成文档在2D空间的分布（Umap降维）"""
+    if model is None or topics is None:
+        return None
+    
+    try:
+        return model.visualize_documents(docs, topics=topics, hide_document_hover=False)
+    except Exception as e:
+        try:
+            # 如果有embedding就用，没有就简化版本
+            return model.visualize_documents(docs, hide_document_hover=True)
+        except:
+            return None
+
+
+def visualize_term_distribution(model: Optional[Any], top_n_topics: int = 5) -> Optional[object]:
+    """生成各主题的词频分布"""
+    if model is None:
+        return None
+    
+    try:
+        return model.visualize_barchart(top_n_topics=top_n_topics)
+    except Exception as e:
+        return None
+
+
 def generate_topic_tree(model: Optional[Any], df: pd.DataFrame, topics: np.ndarray) -> str:
     """生成主题的树形结构文本"""
     if model is None or topics is None:
