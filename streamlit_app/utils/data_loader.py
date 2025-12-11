@@ -119,18 +119,27 @@ ACTOR_MAP = {
     'other': '其他'
 }
 
-def translate_sentiment(value):
-    """翻译情感"""
-    return SENTIMENT_MAP.get(value, value)
-
 def translate_risk(value):
     """翻译风险等级"""
     return RISK_MAP.get(value, value)
 
 def translate_topic(value):
-    """翻译话题"""
+    """翻译话题（支持组合标签）"""
+    if '|' in str(value):
+        parts = str(value).split('|')
+        return '/'.join([TOPIC_MAP.get(p.strip(), p.strip()) for p in parts])
     return TOPIC_MAP.get(value, value)
 
 def translate_actor(value):
-    """翻译参与方"""
+    """翻译参与方（支持组合标签）"""
+    if '|' in str(value):
+        parts = str(value).split('|')
+        return '/'.join([ACTOR_MAP.get(p.strip(), p.strip()) for p in parts])
     return ACTOR_MAP.get(value, value)
+
+def translate_sentiment(value):
+    """翻译情感（支持组合标签）"""
+    if '|' in str(value):
+        parts = str(value).split('|')
+        return '/'.join([SENTIMENT_MAP.get(p.strip(), p.strip()) for p in parts])
+    return SENTIMENT_MAP.get(value, value)
