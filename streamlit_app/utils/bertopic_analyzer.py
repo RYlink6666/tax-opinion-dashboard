@@ -143,3 +143,48 @@ def get_topics_summary(model: Optional[Any]) -> pd.DataFrame:
         return topic_info[['Topic', 'Count', 'Name']].copy()
     except Exception as e:
         return pd.DataFrame()
+
+
+def get_documents_by_topic(df: pd.DataFrame, topics: np.ndarray, topic_id: int, top_n: int = 5) -> pd.DataFrame:
+    """获取指定主题下的文档列表"""
+    if topics is None:
+        return pd.DataFrame()
+    
+    try:
+        mask = topics == topic_id
+        topic_docs = df[mask].head(top_n)[['source_text', 'sentiment', 'risk_level']].copy()
+        return topic_docs
+    except Exception as e:
+        return pd.DataFrame()
+
+
+def generate_topic_tree(model: Optional[Any], df: pd.DataFrame, topics: np.ndarray) -> str:
+    """生成主题的树形结构文本"""
+    if model is None or topics is None:
+        return ""
+    
+    try:
+        topic_info = model.get_topic_info()
+        tree_text = ""
+        
+        for idx, row in topic_info[topic_info['Topic'] != -1].iterrows():
+            topic_id = row['Topic']
+            topic_name = row['Name']
+            count = row['Count']
+            
+            # 获取该主题的前3个文档
+            mask = topics == topic_id
+            docs = df[mask].head(3)
+            
+            tree_text += f"**话题{int(topic_id)}: {topic_name}** ({count} 条文档)\n"
+            
+            for i, (_, doc) in enumerate(docs.iterrows(), 1):
+                text_preview = doc['source_text'][:60] + "..." if len(doc['source_text']) > 60 else doc['source_text']
+                tree_text += f"  ├─ {i}. \"{text_preview}\"\n"
+                tree_text += f"     情感: {doc['sentiment']} | 风险: {doc['risk_level']}\n"
+            
+            tree_text += "\n"
+        
+        return tree_text
+    except Exception as e:
+        return f"生成失败: {e}"

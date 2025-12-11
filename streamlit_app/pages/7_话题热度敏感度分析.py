@@ -19,6 +19,8 @@ from utils.bertopic_analyzer import (
     visualize_topic_similarity,
     visualize_topic_hierarchy,
     get_topics_summary,
+    get_documents_by_topic,
+    generate_topic_tree,
     BERTOPIC_AVAILABLE
 )
 
@@ -340,11 +342,12 @@ if BERTOPIC_AVAILABLE:
             st.markdown("---")
             
             # Tab页面组织BERTopic可视化
-            tab1, tab2, tab3, tab4 = st.tabs([
+            tab1, tab2, tab3, tab4, tab5 = st.tabs([
                 "📊 主题分布",
                 "🔗 主题相似度",
                 "📈 主题层级",
-                "📝 主题列表"
+                "📝 主题列表",
+                "🌳 主题分层"
             ])
             
             with tab1:
@@ -386,6 +389,46 @@ if BERTOPIC_AVAILABLE:
                     hide_index=True,
                     use_container_width=True
                 )
+            
+            with tab5:
+                st.write("**主题分层结构 - 每个话题下的具体文档**")
+                st.write("显示每个主题包含的代表性文档（最多前3条）")
+                
+                # 生成树形结构
+                tree_text = generate_topic_tree(model, df, topics)
+                
+                if tree_text:
+                    st.markdown(tree_text)
+                else:
+                    st.warning("无法生成主题分层结构")
+                
+                st.markdown("---")
+                
+                # 详细查看选项
+                st.write("**选择主题查看详细文档**")
+                
+                selected_topic = st.selectbox(
+                    "选择主题",
+                    options=topic_info[topic_info['Topic'] != -1]['Topic'].tolist(),
+                    format_func=lambda x: f"话题{int(x)}: {topic_info[topic_info['Topic']==x]['Name'].iloc[0]}"
+                )
+                
+                if selected_topic is not None:
+                    topic_docs = get_documents_by_topic(df, topics, selected_topic, top_n=10)
+                    
+                    if not topic_docs.empty:
+                        st.subheader(f"话题{int(selected_topic)}的文档列表")
+                        
+                        for idx, (_, doc) in enumerate(topic_docs.iterrows(), 1):
+                            with st.expander(f"📄 文档{idx}: {doc['source_text'][:50]}..."):
+                                st.write(f"**原文**: {doc['source_text']}")
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.write(f"**情感**: {translate_sentiment(doc['sentiment'])}")
+                                with col2:
+                                    st.write(f"**风险**: {translate_risk(doc['risk_level'])}")
+                    else:
+                        st.info("该主题下无文档")
         else:
             st.warning("⚠️ 无法提取主题，数据可能不足或格式不符")
     else:
