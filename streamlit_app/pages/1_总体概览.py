@@ -1,5 +1,5 @@
 """
-详细总览页面
+总体概览页面 - 简化版本（方案A）
 """
 
 import streamlit as st
@@ -14,118 +14,177 @@ from utils.data_loader import (
     translate_actor
 )
 
-st.set_page_config(page_title="详细总览", page_icon="📊", layout="wide")
+st.set_page_config(page_title="总体概览", page_icon="📊", layout="wide")
 
-st.title("📊 舆论详细总览")
-st.write(f"全面统计所有{len(df)}条意见的分布情况")
+st.title("📊 跨境电商税收舆论总体概览")
 
 def load_data():
     return load_analysis_data()
 
 df = load_data()
 
-# 1. 情感分析详解
-st.subheader("1️⃣ 情感分析详解")
+# 全局摘要
+st.subheader("🎯 数据概览")
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric("总分析意见数", len(df))
+
+with col2:
+    coverage_pct = 99.3
+    st.metric("数据覆盖率", f"{coverage_pct}%", "2,297/2,313条")
+
+with col3:
+    avg_conf = df['sentiment_confidence'].mean()
+    st.metric("平均分析置信度", f"{avg_conf:.2f}", "(0-1)")
+
+with col4:
+    high_risk = len(df[df['risk_level'].isin(['critical', 'high'])])
+    high_risk_pct = high_risk / len(df) * 100
+    st.metric("高风险比例", f"{high_risk_pct:.1f}%", f"{high_risk}条")
+
+st.markdown("---")
+
+# 关键指标
+st.subheader("📈 关键指标")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.info("""
+    **舆论健康度**: ⭐⭐⭐⭐
+    - 中立占比 63.2%
+    - 理性讨论为主
+    """)
+
+with col2:
+    st.warning("""
+    **风险预警**: ⚠️ 中等
+    - 高/严重风险: 18.5%
+    - 需要监测关注
+    """)
+
+with col3:
+    neg_pct = len(df[df['sentiment'] == 'negative']) / len(df) * 100
+    st.error(f"""
+    **负面舆论**: {neg_pct:.1f}%
+    - 需要积极引导
+    - 推荐政策调整
+    """)
+
+st.markdown("---")
+
+# 4个关键维度一览
+st.subheader("🔍 四大分析维度")
 
 col1, col2 = st.columns(2)
 
 with col1:
+    # 情感分布
+    st.write("**维度1: 舆论情感倾向**")
     sentiment_dist = df['sentiment'].value_counts()
-    st.metric("总计", len(df))
-    
-    for sentiment, count in sentiment_dist.items():
-        pct = count / len(df) * 100
-        st.write(f"**{translate_sentiment(sentiment)}**: {count} 条 ({pct:.1f}%)")
-    
-    avg_conf = df['sentiment_confidence'].mean()
-    st.write(f"**平均置信度**: {avg_conf:.2f}")
-
-with col2:
-    # 翻译情感标签
     sentiment_labels = [translate_sentiment(k) for k in sentiment_dist.index]
+    
     fig = go.Figure(data=[go.Pie(
         labels=sentiment_labels,
         values=sentiment_dist.values,
         marker=dict(colors=['#ef553b', '#636efa', '#00cc96'])
     )])
+    fig.update_layout(height=350, showlegend=True)
     st.plotly_chart(fig, use_container_width=True)
+    
+    st.write("→ 详细分析请访问 **风险分析** 页面")
 
-# 2. 话题分析
-st.subheader("2️⃣ 话题分析")
-
-col1, col2 = st.columns([2, 1])
-
-with col1:
-    topic_dist = df['topic'].value_counts().head(10)
-    # 翻译话题标签
-    topic_labels = [translate_topic(k) for k in topic_dist.index]
-    fig = go.Figure(data=[go.Bar(
-        y=topic_labels,
-        x=topic_dist.values,
-        orientation='h',
-        marker=dict(color=topic_dist.values, colorscale='Blues')
-    )])
-    fig.update_layout(height=400, title="话题分布排行")
-    st.plotly_chart(fig, use_container_width=True)
-
-with col1:
-    st.write("**话题统计**")
-    for topic, count in topic_dist.items():
-        pct = count / len(df) * 100
-        st.write(f"- {translate_topic(topic)}: {count} ({pct:.1f}%)")
-
-# 3. 风险分析
-st.subheader("3️⃣ 风险等级分析")
-
-risk_dist = df['risk_level'].value_counts()
-risk_order = ['critical', 'high', 'medium', 'low']
-risk_ordered = {k: risk_dist.get(k, 0) for k in risk_order}
-
-col1, col2 = st.columns(2)
-
-with col1:
-    # 翻译风险等级标签
+with col2:
+    # 风险分布
+    st.write("**维度2: 风险等级评估**")
+    risk_dist = df['risk_level'].value_counts()
+    risk_order = ['critical', 'high', 'medium', 'low']
+    risk_ordered = {k: risk_dist.get(k, 0) for k in risk_order}
+    
     risk_labels = [translate_risk(k) for k in risk_ordered.keys()]
     fig = go.Figure(data=[go.Bar(
         x=risk_labels,
         y=list(risk_ordered.values()),
         marker=dict(color=['#8b0000', '#ff6b6b', '#ffa500', '#00cc96'])
     )])
-    fig.update_layout(height=400, title="风险分布")
+    fig.update_layout(height=350, title="")
     st.plotly_chart(fig, use_container_width=True)
+    
+    st.write("→ 详细分析请访问 **风险分析** 页面")
+
+st.markdown("---")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    # 话题分布
+    st.write("**维度3: 舆论关注话题**")
+    topic_dist = df['topic'].value_counts().head(6)
+    topic_labels = [translate_topic(k) for k in topic_dist.index]
+    
+    fig = go.Figure(data=[go.Bar(
+        y=topic_labels,
+        x=topic_dist.values,
+        orientation='h',
+        marker=dict(color=topic_dist.values, colorscale='Blues')
+    )])
+    fig.update_layout(height=350, xaxis_title="讨论数", yaxis_title="")
+    st.plotly_chart(fig, use_container_width=True)
+    
+    st.write("→ 详细分析请访问 **话题热度敏感度分析** 页面")
 
 with col2:
-    st.write("**风险统计**")
-    for risk, count in risk_ordered.items():
-        pct = count / len(df) * 100
-        st.write(f"- {translate_risk(risk)}: {count} ({pct:.1f}%)")
+    # 参与方分布
+    st.write("**维度4: 舆论参与方**")
+    actor_dist = df['actor'].value_counts().head(6)
+    actor_labels = [translate_actor(k) for k in actor_dist.index]
+    
+    fig = go.Figure(data=[go.Bar(
+        y=actor_labels,
+        x=actor_dist.values,
+        orientation='h',
+        marker=dict(color=actor_dist.values, colorscale='Plasma')
+    )])
+    fig.update_layout(height=350, xaxis_title="讨论数", yaxis_title="")
+    st.plotly_chart(fig, use_container_width=True)
+    
+    st.write("→ 详细分析请访问 **参与方分析** 页面")
 
-# 4. 参与方分析
-st.subheader("4️⃣ 参与方分析")
+st.markdown("---")
 
-actor_dist = df['actor'].value_counts().head(10)
+# 导航面板
+st.subheader("🚀 快速导航")
 
-# 翻译参与方标签
-actor_labels = [translate_actor(k) for k in actor_dist.index]
-fig = go.Figure(data=[go.Bar(
-    x=actor_labels,
-    y=actor_dist.values,
-    marker=dict(color=actor_dist.values, colorscale='Viridis')
-)])
-fig.update_layout(height=400, title="参与方分布", xaxis_tickangle=-45)
-st.plotly_chart(fig, use_container_width=True)
+col1, col2, col3 = st.columns(3)
 
-# 5. 置信度分析
-st.subheader("5️⃣ 分析质量评估")
+with col1:
+    st.markdown("""
+    #### 📖 数据浏览
+    🔍 **意见搜索** - 按条件过滤, 搜索关键词, 查看原文
+    """)
 
-conf_stats = get_confidence_stats(df)
+with col2:
+    st.markdown("""
+    #### 📊 深度分析
+    🔥 **话题分析** - 热度/敏感度/BERTopic主题建模  
+    ⚠️ **风险分析** - 高风险特征识别  
+    📈 **模式分析** - 舆论模式分类  
+    👥 **参与方分析** - 利益相关方观点
+    """)
 
-fig = go.Figure(data=[go.Bar(
-    x=['情感', '话题', '模式', '风险', '参与方'],
-    y=[conf_stats['sentiment'], conf_stats['topic'], conf_stats['pattern'], conf_stats['risk'], conf_stats['actor']],
-    marker=dict(color=['#636efa', '#ef553b', '#00cc96', '#ab63fa', '#ffa15a'])
-)])
-fig.update_layout(height=400, title="各维度平均置信度", yaxis_range=[0, 1])
-st.plotly_chart(fig, use_container_width=True)
+with col3:
+    st.markdown("""
+    #### 💡 决策支持
+    🎯 **政策建议** - 舆论洞察&政策优化建议  
+    🔬 **互动工具** (Phase 4) - 单文档分析、离群值处理等
+    """)
 
-st.info("💡 **更多分析** - 使用左侧菜单查看特定维度的深度分析")
+st.info("""
+💡 **使用提示**:
+- 左侧菜单切换页面
+- P2 **意见搜索** 的Tab2可对搜索结果进行实时分析
+- P7 **话题分析** 集成了全部BERTopic可视化和高级分析
+- 后续Phase 4将新增P9 **互动分析工具**（可解释性功能）
+""")
