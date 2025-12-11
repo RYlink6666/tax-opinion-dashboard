@@ -19,7 +19,6 @@ st.set_page_config(page_title="风险分析", page_icon="⚠️", layout="wide")
 st.title("⚠️ 风险深度分析")
 st.write("全面分析高风险舆论的特征和分布")
 
-@st.cache_data
 def load_data():
     return load_analysis_data()
 

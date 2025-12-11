@@ -19,7 +19,6 @@ st.set_page_config(page_title="参与方分析", page_icon="👥", layout="wide"
 st.title("👥 参与方分析")
 st.write("分析不同参与方在舆论中的表现和行为")
 
-@st.cache_data
 def load_data():
     return load_analysis_data()
 

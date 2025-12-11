@@ -19,7 +19,6 @@ st.set_page_config(page_title="模式分析", page_icon="🔍", layout="wide")
 st.title("🔍 舆论模式分析")
 st.write("识别和分析主要的舆论表达模式")
 
-@st.cache_data
 def load_data():
     return load_analysis_data()
 

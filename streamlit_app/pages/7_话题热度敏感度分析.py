@@ -19,7 +19,6 @@ st.set_page_config(page_title="话题分析", page_icon="🔥", layout="wide")
 st.title("🔥 话题热度与敏感度分析")
 st.write("分析大家对什么话题感兴趣，对什么话题敏感")
 
-@st.cache_data
 def load_data():
     return load_analysis_data()
 

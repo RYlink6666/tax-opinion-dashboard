@@ -18,7 +18,6 @@ st.set_page_config(page_title="政策建议", page_icon="💡", layout="wide")
 st.title("💡 基于舆论分析的政策建议")
 st.write("根据1,399条意见的LLM分析，提出有针对性的政策优化建议")
 
-@st.cache_data
 def load_data():
     return load_analysis_data()
 

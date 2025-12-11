@@ -19,7 +19,6 @@ st.set_page_config(page_title="数据搜索", page_icon="🔍", layout="wide")
 
 st.title("🔍 数据搜索和详览")
 
-@st.cache_data
 def load_data():
     return load_analysis_data()
 

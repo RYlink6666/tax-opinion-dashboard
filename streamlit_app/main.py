@@ -28,8 +28,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 加载数据
-@st.cache_data
+# 加载数据（不缓存，每次都读新数据）
 def load_data():
     return load_analysis_data()
 
