@@ -4,6 +4,7 @@
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from utils.data_loader import (
     load_analysis_data,
@@ -270,9 +271,37 @@ if BERTOPIC_AVAILABLE:
     st.subheader("8️⃣ 🤖 深度主题建模分析 (基于BERTopic)")
     st.write("使用AI提取文本中的隐藏主题关系，而非依赖预定义分类")
     
-    # 训练BERTopic模型
-    texts = df['source_text'].tolist()
-    topics, probs, model = train_bertopic(texts)
+    # 尝试加载预训练模型，如果不存在则实时训练
+    import os
+    import json
+    from pathlib import Path
+    
+    pretrained_model_path = Path(__file__).parent.parent / "data" / "bertopic_model"
+    
+    if pretrained_model_path.exists():
+        # 使用预训练模型（秒开）
+        try:
+            from bertopic import BERTopic
+            model = BERTopic.load(str(pretrained_model_path))
+            
+            # 加载预计算的话题结果
+            result_file = pretrained_model_path / "topics_result.json"
+            if result_file.exists():
+                with open(result_file, 'r', encoding='utf-8') as f:
+                    results = json.load(f)
+                topics = np.array(results['topics'])
+                probs = np.array(results['probabilities']) if results['probabilities'] else None
+            else:
+                texts = df['source_text'].tolist()
+                topics, probs = model.fit_transform(texts)
+        except Exception as e:
+            st.warning(f"加载预训练模型失败，改用实时训练: {e}")
+            texts = df['source_text'].tolist()
+            topics, probs, model = train_bertopic(texts)
+    else:
+        # 预训练模型不存在，实时训练（首次运行）
+        texts = df['source_text'].tolist()
+        topics, probs, model = train_bertopic(texts)
     
     if model is not None and topics is not None:
         # 显示主题统计
