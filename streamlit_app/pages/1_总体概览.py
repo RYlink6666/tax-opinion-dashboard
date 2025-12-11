@@ -39,8 +39,9 @@ with col1:
     st.metric("总分析意见数", len(df))
 
 with col2:
-    coverage_pct = 99.3
-    st.metric("数据覆盖率", f"{coverage_pct}%", "2,297/2,313条")
+    # 动态计算覆盖率（假设基准为2313条）
+    coverage_pct = len(df) / 2313 * 100
+    st.metric("数据覆盖率", f"{coverage_pct:.1f}%", f"{len(df):,}/2,313条")
 
 with col3:
     avg_conf = df['sentiment_confidence'].mean()
@@ -53,27 +54,33 @@ with col4:
 
 st.markdown("---")
 
-# 关键指标
+# 关键指标 (动态计算)
 st.subheader("📈 关键指标")
 
 col1, col2, col3 = st.columns(3)
 
+# 动态计算所有指标
+neutral_pct = len(df[df['sentiment'] == 'neutral']) / len(df) * 100
+high_critical_pct = len(df[df['risk_level'].isin(['critical', 'high'])]) / len(df) * 100
+neg_pct = len(df[df['sentiment'] == 'negative']) / len(df) * 100
+
 with col1:
-    st.info("""
-    **舆论健康度**: ⭐⭐⭐⭐
-    - 中立占比 63.2%
+    health_level = "⭐⭐⭐⭐" if neutral_pct >= 60 else "⭐⭐⭐" if neutral_pct >= 40 else "⭐⭐"
+    st.info(f"""
+    **舆论健康度**: {health_level}
+    - 中立占比 {neutral_pct:.1f}%
     - 理性讨论为主
     """)
 
 with col2:
-    st.warning("""
-    **风险预警**: ⚠️ 中等
-    - 高/严重风险: 18.5%
+    risk_level = "中等" if high_critical_pct >= 15 else "低"
+    st.warning(f"""
+    **风险预警**: ⚠️ {risk_level}
+    - 高/严重风险: {high_critical_pct:.1f}%
     - 需要监测关注
     """)
 
 with col3:
-    neg_pct = len(df[df['sentiment'] == 'negative']) / len(df) * 100
     st.error(f"""
     **负面舆论**: {neg_pct:.1f}%
     - 需要积极引导
