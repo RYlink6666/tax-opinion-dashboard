@@ -22,8 +22,7 @@ st.set_page_config(page_title="互动分析工具", page_icon="🔮", layout="wi
 st.title("🔮 互动分析工具")
 st.write("基于LLM标注的智能分析 - 秒开，无需等待模型训练")
 
-# 加载数据
-@st.cache_data
+# 加载数据（不缓存，确保数据最新）
 def load_data():
     return load_analysis_data()
 
@@ -329,6 +328,9 @@ with tab6:
     
     actor_series = pd.Series(all_actors)
     actor_dist = actor_series.value_counts()
+    
+    # 调试信息
+    st.info(f"[调试] 拆分后参与方数: {len(actor_dist)} | 总记录数: {len(df)} | 拆分后总数: {len(all_actors)}")
     
     col1, col2 = st.columns(2)
     
