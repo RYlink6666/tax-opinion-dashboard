@@ -39,16 +39,17 @@ def get_bertopic_model() -> Optional[Any]:
         
         # 优化HDBSCAN聚类参数（防止话题重复）
         umap_model = UMAP(
-            n_neighbors=15,
+            n_neighbors=20,           # ← 增加到20（保留更多全局结构）
             n_components=5,
-            min_dist=0.0,
+            min_dist=0.1,             # ← 增加到0.1（避免过度聚集）
             metric='cosine',
             random_state=42
         )
         
         hdbscan_model = HDBSCAN(
-            min_cluster_size=10,      # ← 提高聚类最小大小（防止噪音被分为单独话题）
-            min_samples=5,            # ← 聚类密度要求
+            min_cluster_size=30,      # ← 大幅提高到30（防止小话题被分离）
+            min_samples=10,           # ← 提高到10（密度要求更严格）
+            cluster_selection_epsilon=0.5,  # ← 添加：进一步合并相似簇
             prediction_data=True      # ← 支持新文档预测
         )
         
