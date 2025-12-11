@@ -92,12 +92,15 @@ def create_horizontal_bar(labels, values, title="", colorscale='Blues'):
     # 确保values是数值类型的列表
     values_list = [float(v) for v in values] if hasattr(values, '__iter__') else [float(values)]
     
+    # 确保labels是字符串列表
+    labels_list = [str(label) if label is not None else '' for label in labels]
+    
     # 生成颜色列表（从浅蓝到深蓝）
     n = len(values_list)
-    colors = [f'rgba(31, 119, 180, {0.4 + 0.4 * i / max(1, n-1)})' for i in range(n)]
+    colors = ['rgba(31, 119, 180, ' + str(0.4 + 0.4 * i / max(1, n-1)) + ')' for i in range(n)]
     
     fig = go.Figure(data=[go.Bar(
-        y=labels,
+        y=labels_list,
         x=values_list,
         orientation='h',
         marker=dict(
