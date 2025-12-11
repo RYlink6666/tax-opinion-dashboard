@@ -4,15 +4,23 @@
 
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
-import plotly.express as px
+import re
 from utils.data_loader import (
     load_analysis_data,
     translate_sentiment,
     translate_risk,
     translate_topic,
-    translate_actor
+    translate_actor,
+    get_actors_split_statistics,
+    get_cross_analysis
 )
+from utils.chart_builder import (
+    create_distribution_pie,
+    create_grouped_bar,
+    create_stacked_bar,
+    create_crosstab_heatmap
+)
+from utils.components import display_opinion_expander
 
 st.set_page_config(page_title="参与方分析", page_icon="👥", layout="wide")
 
@@ -24,43 +32,29 @@ def load_data():
 
 df = load_data()
 
-# 辅助函数：拆分复合标签
-def split_composite_labels(series):
-    """将复合标签（如'consumer|government'）拆分为单独的标签"""
-    all_labels = []
-    for value in series:
-        if pd.isna(value):
-            continue
-        labels = str(value).split('|')
-        all_labels.extend([label.strip() for label in labels])
-    return all_labels
-
 # 1. 参与方分布概览
 st.subheader("1️⃣ 参与方分布")
+
+# 获取拆分后的参与方统计
+actor_dist = get_actors_split_statistics(df)
 
 col1, col2 = st.columns(2)
 
 with col1:
-    # 拆分复合标签后统计
-    split_actors = split_composite_labels(df['actor'])
-    actor_dist = pd.Series(split_actors).value_counts()
-    
-    st.write(f"**参与方类型**: {len(actor_dist)} 种 [split count={len(split_actors)}]")
+    st.write(f"**参与方类型**: {len(actor_dist)} 种")
     st.write("")
     for actor, count in actor_dist.items():
-        pct = count / len(split_actors) * 100
+        pct = count / actor_dist.sum() * 100
         st.write(f"**{translate_actor(actor)}**: {count} ({pct:.1f}%)")
 
 with col2:
     # 翻译参与方标签
     actor_labels = [translate_actor(actor) for actor in actor_dist.index]
-    fig_actor = go.Figure(data=[go.Pie(
-        labels=actor_labels,
-        values=actor_dist.values,
-        hole=0.3,
-        marker=dict(colors=px.colors.qualitative.Set2)
-    )])
-    fig_actor.update_layout(height=400, showlegend=True)
+    fig_actor = create_distribution_pie(
+        actor_dist.values,
+        actor_labels,
+        title="参与方分布"
+    )
     st.plotly_chart(fig_actor, use_container_width=True)
 
 st.markdown("---")
@@ -81,20 +75,18 @@ df_split = pd.DataFrame(df_split)
 
 actor_sentiment = pd.crosstab(df_split['actor'], df_split['sentiment'])
 
-# 翻译参与方和情感标签
+# 翻译行标签（参与方）
 actor_labels_x = [translate_actor(actor) for actor in actor_sentiment.index]
-sentiment_labels = [translate_sentiment(sent) for sent in actor_sentiment.columns]
+actor_sentiment_display = actor_sentiment.copy()
+actor_sentiment_display.index = actor_labels_x
 
-fig_sentiment = go.Figure(data=[
-    go.Bar(name=sentiment_labels[i], x=actor_labels_x, y=actor_sentiment[actor_sentiment.columns[i]])
-    for i in range(len(actor_sentiment.columns))
-])
-fig_sentiment.update_layout(
-    barmode='group',
-    height=400,
-    xaxis_title="参与方",
-    yaxis_title="记录数",
-    xaxis_tickangle=-45
+# 翻译列标签（情感）
+sentiment_cols_display = [translate_sentiment(sent) for sent in actor_sentiment.columns]
+actor_sentiment_display.columns = sentiment_cols_display
+
+fig_sentiment = create_grouped_bar(
+    actor_sentiment_display,
+    title="参与方的情感倾向"
 )
 st.plotly_chart(fig_sentiment, use_container_width=True)
 
@@ -117,20 +109,22 @@ df_risk_split = pd.DataFrame(df_risk_split)
 actor_risk = pd.crosstab(df_risk_split['actor'], df_risk_split['risk_level'])
 risk_order = ['critical', 'high', 'medium', 'low']
 
-# 翻译参与方和风险等级标签
-actor_labels_x = [translate_actor(actor) for actor in actor_risk.index]
-risk_labels = [translate_risk(risk_type) for risk_type in risk_order]
+# 确保所有风险等级都存在（缺失的用0填充）
+for risk in risk_order:
+    if risk not in actor_risk.columns:
+        actor_risk[risk] = 0
+actor_risk = actor_risk[risk_order]
 
-fig_risk = go.Figure(data=[
-    go.Bar(name=risk_labels[i], x=actor_labels_x, y=actor_risk[risk_order[i]] if risk_order[i] in actor_risk.columns else [0]*len(actor_risk))
-    for i in range(len(risk_order))
-])
-fig_risk.update_layout(
-    barmode='stack',
-    height=400,
-    xaxis_title="参与方",
-    yaxis_title="记录数",
-    xaxis_tickangle=-45
+# 翻译标签
+actor_labels_x = [translate_actor(actor) for actor in actor_risk.index]
+actor_risk_display = actor_risk.copy()
+actor_risk_display.index = actor_labels_x
+risk_labels = [translate_risk(risk_type) for risk_type in risk_order]
+actor_risk_display.columns = risk_labels
+
+fig_risk = create_stacked_bar(
+    actor_risk_display,
+    title="参与方的风险分布"
 )
 st.plotly_chart(fig_risk, use_container_width=True)
 
@@ -152,17 +146,17 @@ df_topic_split = pd.DataFrame(df_topic_split)
 
 actor_topic = pd.crosstab(df_topic_split['actor'], df_topic_split['topic'])
 
-# 翻译参与方和话题标签
+# 翻译标签
 actor_labels_y = [translate_actor(actor) for actor in actor_topic.index]
 topic_labels_x = [translate_topic(topic) for topic in actor_topic.columns]
+actor_topic_display = actor_topic.copy()
+actor_topic_display.index = actor_labels_y
+actor_topic_display.columns = topic_labels_x
 
-fig_topic_heatmap = go.Figure(data=go.Heatmap(
-    z=actor_topic.values,
-    x=topic_labels_x,
-    y=actor_labels_y,
-    colorscale='YlOrRd'
-))
-fig_topic_heatmap.update_layout(height=400, xaxis_title="话题", yaxis_title="参与方")
+fig_topic_heatmap = create_crosstab_heatmap(
+    actor_topic_display,
+    title="参与方的话题关注分布"
+)
 st.plotly_chart(fig_topic_heatmap, use_container_width=True)
 
 st.markdown("---")
@@ -272,9 +266,6 @@ for actor in actors_top:
         if len(actor_risk_df) > 0:
             samples = actor_risk_df.head(3)
             for idx, (_, row) in enumerate(samples.iterrows(), 1):
-                st.write(f"**{idx}.** [风险等级: {row['risk_level'].upper()}]")
-                st.write(f"📝 {row['source_text']}")
-                st.caption(f"情感: {translate_sentiment(row['sentiment'])} | 话题: {translate_topic(row['topic'])} | 模式: {row['pattern']}")
-                st.divider()
+                display_opinion_expander(row, index=idx)
         else:
             st.info(f"暂无 {translate_actor(actor)} 的高风险发言")
