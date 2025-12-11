@@ -214,3 +214,150 @@ def generate_topic_tree(model: Optional[Any], df: pd.DataFrame, topics: np.ndarr
         return tree_text
     except Exception as e:
         return f"生成失败: {e}"
+
+
+def visualize_term_score_decline(model: Optional[Any], top_n_topics: int = 5) -> Optional[object]:
+    """生成c-TF-IDF分数衰减图（显示词汇权重的递减）"""
+    if model is None:
+        return None
+    
+    try:
+        return model.visualize_term_rank(top_n_topics=top_n_topics, log_scale=False)
+    except Exception as e:
+        return None
+
+
+def get_hierarchical_topics(model: Optional[Any]) -> Optional[pd.DataFrame]:
+    """计算并返回层级主题结构"""
+    if model is None:
+        return None
+    
+    try:
+        # 需要有足够的主题才能生成层级
+        if len(model.get_topic_info()) > 2:
+            hierarchical_topics = model.hierarchical_topics(
+                model.documents,
+                linkage_function=lambda x: __import__('scipy').cluster.hierarchy.linkage(x, "ward")
+            )
+            return hierarchical_topics
+        else:
+            return None
+    except Exception as e:
+        return None
+
+
+def visualize_hierarchical_documents(model: Optional[Any], texts: List[str], topics: np.ndarray) -> Optional[object]:
+    """生成分层文档可视化（在层级树的2D空间中）"""
+    if model is None or topics is None or len(texts) == 0:
+        return None
+    
+    try:
+        # 获取分层主题
+        if len(model.get_topic_info()) > 2:
+            hierarchical_topics = model.hierarchical_topics(
+                model.documents,
+                linkage_function=lambda x: __import__('scipy').cluster.hierarchy.linkage(x, "ward")
+            )
+            # 尝试可视化分层文档
+            return model.visualize_hierarchical_documents(texts, hierarchical_topics=hierarchical_topics, hide_document_hover=True)
+        else:
+            return None
+    except Exception as e:
+        return None
+
+
+def get_topic_keywords_detailed(model: Optional[Any], topic_id: int, top_n: int = 10) -> pd.DataFrame:
+    """获取指定主题的关键词及其c-TF-IDF分数"""
+    if model is None:
+        return pd.DataFrame()
+    
+    try:
+        topic_info = model.get_topic(topic_id)
+        if topic_info:
+            # topic_info 是 [(word, score), ...] 的列表
+            keywords_df = pd.DataFrame(topic_info[:top_n], columns=['关键词', 'c-TF-IDF分数'])
+            keywords_df['排名'] = range(1, len(keywords_df) + 1)
+            return keywords_df[['排名', '关键词', 'c-TF-IDF分数']]
+        return pd.DataFrame()
+    except Exception as e:
+        return pd.DataFrame()
+
+
+def get_topic_text_representation(model: Optional[Any], topic_id: int) -> str:
+    """获取主题的文本表示（由生成模型生成）"""
+    if model is None:
+        return ""
+    
+    try:
+        # 获取主题的标签（如果有的话）
+        topic_info = model.get_topic_info()
+        if topic_info is not None and len(topic_info) > 0:
+            topic_row = topic_info[topic_info['Topic'] == topic_id]
+            if not topic_row.empty:
+                return topic_row.iloc[0]['Name']
+        return f"话题{topic_id}"
+    except Exception as e:
+        return f"话题{topic_id}"
+
+
+def calculate_topic_distribution(model: Optional[Any], texts: List[str]) -> Optional[np.ndarray]:
+    """计算文档的主题分布概率矩阵"""
+    if model is None or len(texts) == 0:
+        return None
+    
+    try:
+        # 如果使用了calculate_probabilities=True，可以直接获取
+        if hasattr(model, 'probabilities_') and model.probabilities_ is not None:
+            return model.probabilities_
+        else:
+            # 否则尝试估计主题分布
+            return model.approximate_distribution(texts)
+    except Exception as e:
+        return None
+
+
+def visualize_topic_per_class(model: Optional[Any], df: pd.DataFrame, class_column: str = 'sentiment') -> Optional[object]:
+    """按分类（如情感类别）生成主题分布可视化"""
+    if model is None or df is None or class_column not in df.columns:
+        return None
+    
+    try:
+        # 获取所有唯一的类别
+        classes = df[class_column].unique()
+        
+        # 创建简单的柱状图对比
+        import plotly.graph_objects as go
+        
+        fig = go.Figure()
+        topic_info = model.get_topic_info()
+        
+        for class_val in classes:
+            class_mask = df[class_column] == class_val
+            topic_counts = []
+            
+            for topic_id in topic_info['Topic']:
+                if topic_id == -1:  # 跳过噪声
+                    continue
+                count = len(df[class_mask & (df.index.isin([i for i, t in enumerate(model.topics_) if t == topic_id]))])
+                topic_counts.append(count)
+            
+            fig.add_trace(go.Bar(
+                name=str(class_val),
+                x=topic_info[topic_info['Topic'] != -1]['Topic'].astype(str),
+                y=topic_counts,
+                text=topic_counts,
+                textposition='auto',
+            ))
+        
+        fig.update_layout(
+            title="按分类统计的主题分布",
+            xaxis_title="主题ID",
+            yaxis_title="文档数量",
+            barmode='group',
+            height=400,
+            hovermode='x unified'
+        )
+        
+        return fig
+    except Exception as e:
+        return None
