@@ -525,59 +525,194 @@ def visualize_approximate_distribution(model: Optional[Any], texts: List[str],
 
 def reduce_outliers(model: Optional[Any], topics: np.ndarray, 
                    strategy: str = "probabilities", threshold: float = 0.1) -> tuple:
+     """
+     F103: 离群值自动重分类
+     
+     将noise文档(标签-1)重新分配到有效主题
+     
+     参数:
+         model: BERTopic模型
+         topics: 原始主题数组
+         strategy: 重分类策略
+             - "probabilities": 基于HDBSCAN软聚类概率
+             - "distributions": 基于近似主题分布
+             - "c-tf-idf": 基于词频相似度（最快）
+             - "embeddings": 基于语义embedding相似度（最准）
+         threshold: 分配置信度阈值 (0.05-0.3)
+     
+     返回:
+         (新的topics数组, 统计报告dict)
+     """
+     if model is None or topics is None:
+         return topics, {}
+     
+     try:
+         # 计算统计信息
+         noise_mask = topics == -1
+         noise_count_before = np.sum(noise_mask)
+         
+         if noise_count_before == 0:
+             return topics, {'message': '没有离群值需要处理'}
+         
+         # 调用BERTopic的reduce_outliers方法
+         new_topics = model.reduce_outliers(
+             topics,
+             strategy=strategy,
+             threshold=threshold
+         )
+         
+         # 计算改进效果
+         noise_count_after = np.sum(new_topics == -1)
+         reclassified_count = noise_count_before - noise_count_after
+         reclassified_pct = reclassified_count / noise_count_before * 100 if noise_count_before > 0 else 0
+         
+         report = {
+             'strategy': strategy,
+             'threshold': threshold,
+             '重分类前噪声数': int(noise_count_before),
+             '重分类后噪声数': int(noise_count_after),
+             '重新分配数': int(reclassified_count),
+             '改进率': f"{reclassified_pct:.1f}%",
+             '状态': '成功' if reclassified_count > 0 else '无改进'
+         }
+         
+         return new_topics, report
+     
+     except Exception as e:
+         st.warning(f"离群值处理失败: {e}")
+         return topics, {'error': str(e)}
+
+
+# ============================================================================
+# Phase 5 新增函数 - F104, F105, F106
+# ============================================================================
+
+def set_topic_labels(model: Optional[Any], topic_labels_dict: dict) -> tuple:
     """
-    F103: 离群值自动重分类
+    F104: 自定义主题标签设置
     
-    将noise文档(标签-1)重新分配到有效主题
+    允许用户为主题指定自定义名称，替换自动生成的标签
     
     参数:
-        model: BERTopic模型
-        topics: 原始主题数组
-        strategy: 重分类策略
-            - "probabilities": 基于HDBSCAN软聚类概率
-            - "distributions": 基于近似主题分布
-            - "c-tf-idf": 基于词频相似度（最快）
-            - "embeddings": 基于语义embedding相似度（最准）
-        threshold: 分配置信度阈值 (0.05-0.3)
+         model: BERTopic模型
+         topic_labels_dict: 标签映射字典 {topic_id: custom_label}
+         例如: {0: "用户体验", 1: "产品质量", 2: "配送速度"}
     
     返回:
-        (新的topics数组, 统计报告dict)
+         (更新后的模型, 操作结果dict)
     """
-    if model is None or topics is None:
-        return topics, {}
+    if model is None or not topic_labels_dict:
+        return model, {'status': '失败', 'message': '模型或标签为空'}
     
     try:
-        # 计算统计信息
-        noise_mask = topics == -1
-        noise_count_before = np.sum(noise_mask)
-        
-        if noise_count_before == 0:
-            return topics, {'message': '没有离群值需要处理'}
-        
-        # 调用BERTopic的reduce_outliers方法
-        new_topics = model.reduce_outliers(
-            topics,
-            strategy=strategy,
-            threshold=threshold
-        )
-        
-        # 计算改进效果
-        noise_count_after = np.sum(new_topics == -1)
-        reclassified_count = noise_count_before - noise_count_after
-        reclassified_pct = reclassified_count / noise_count_before * 100 if noise_count_before > 0 else 0
-        
-        report = {
-            'strategy': strategy,
-            'threshold': threshold,
-            '重分类前噪声数': int(noise_count_before),
-            '重分类后噪声数': int(noise_count_after),
-            '重新分配数': int(reclassified_count),
-            '改进率': f"{reclassified_pct:.1f}%",
-            '状态': '成功' if reclassified_count > 0 else '无改进'
-        }
-        
-        return new_topics, report
+         # BERTopic的set_topic_labels方法
+         model.set_topic_labels(topic_labels_dict)
+         
+         result = {
+             'status': '成功',
+             'message': f'已设置{len(topic_labels_dict)}个主题的自定义标签',
+             'labels_count': len(topic_labels_dict)
+         }
+         
+         return model, result
     
     except Exception as e:
-        st.warning(f"离群值处理失败: {e}")
-        return topics, {'error': str(e)}
+        return model, {'status': '失败', 'message': str(e)}
+
+
+def visualize_barchart_comparison(model: Optional[Any], top_n_topics: int = 5, top_n_words: int = 10) -> Optional[object]:
+    """
+    F105: 多主题词权重对比柱状图
+    
+    并行显示多个主题的Top词及其权重，方便进行主题对比
+    
+    参数:
+         model: BERTopic模型
+         top_n_topics: 显示多少个主题
+         top_n_words: 每个主题显示多少个Top词
+    
+    返回:
+         Plotly交互式可视化对象
+    """
+    if model is None:
+        return None
+    
+    try:
+        # 调用BERTopic的visualize_barchart方法
+        fig = model.visualize_barchart(top_n_topics=top_n_topics, top_n_words=top_n_words)
+        return fig
+    
+    except Exception as e:
+        st.warning(f"多主题词权重对比生成失败: {e}")
+        return None
+
+
+def search_topics(model: Optional[Any], keywords: List[str], top_n: int = 5) -> pd.DataFrame:
+    """
+    F106: 关键词主题搜索
+    
+    输入关键词，返回包含这些词的主题列表及相关性排名
+    
+    参数:
+         model: BERTopic模型
+         keywords: 搜索关键词列表
+         top_n: 返回排名前n的相关主题
+    
+    返回:
+         包含主题、匹配词、相关性分数的DataFrame
+    """
+    if model is None or not keywords:
+        return pd.DataFrame()
+    
+    try:
+        topic_info = model.get_topic_info()
+        results = []
+        
+        for topic_id in topic_info['Topic']:
+            if topic_id == -1:  # 跳过噪声
+                continue
+            
+            # 获取该主题的所有词
+            topic_words = model.get_topic(topic_id)
+            if not topic_words:
+                continue
+            
+            word_list = [word for word, score in topic_words]
+            
+            # 检查关键词匹配
+            matched_words = []
+            match_scores = []
+            
+            for keyword in keywords:
+                for idx, (word, score) in enumerate(topic_words):
+                    if keyword in word or word in keyword:
+                        matched_words.append(word)
+                        match_scores.append(score * (1 / (idx + 1)))  # 权重：排名越高分数越高
+                        break
+            
+            if matched_words:
+                # 该主题与搜索词相关
+                avg_score = np.mean(match_scores) if match_scores else 0
+                topic_name = topic_info[topic_info['Topic'] == topic_id].iloc[0]['Name']
+                
+                results.append({
+                    '主题ID': int(topic_id),
+                    '主题名称': topic_name,
+                    '匹配词': ', '.join(matched_words),
+                    '平均相关性': f"{avg_score:.3f}",
+                    '文档数': int(topic_info[topic_info['Topic'] == topic_id].iloc[0]['Count'])
+                })
+        
+        if results:
+            results_df = pd.DataFrame(results)
+            # 按相关性排序
+            results_df['相关性分数'] = results_df['平均相关性'].astype(float)
+            results_df = results_df.sort_values('相关性分数', ascending=False).head(top_n)
+            results_df = results_df.drop('相关性分数', axis=1)
+            return results_df
+        else:
+            return pd.DataFrame()
+    
+    except Exception as e:
+        st.warning(f"关键词搜索失败: {e}")
+        return pd.DataFrame()
