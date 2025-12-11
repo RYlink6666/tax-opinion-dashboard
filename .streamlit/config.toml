@@ -7,6 +7,7 @@ font = "sans serif"
 
 [browser]
 gatherUsageStats = false
+serverAddress = "localhost"
 
 [logger]
 level = "info"
@@ -18,3 +19,12 @@ toolbarMode = "viewer"
 [server]
 maxUploadSize = 200
 enableXsrfProtection = true
+headless = true
+runOnSave = true
+
+# 关键配置：支持Streamlit Cloud部署
+[client]
+toolbarMode = "viewer"
+
+[logger]
+level = "debug"

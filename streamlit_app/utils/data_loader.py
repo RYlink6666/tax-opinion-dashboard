@@ -10,17 +10,77 @@ import os
 
 
 def load_analysis_data(filepath=None):
-    """加载分析结果JSON文件（不缓存，每次都读新数据）"""
+    """加载分析结果JSON文件（不缓存，每次都读新数据）
+    
+    支持多个部署环境：
+    - 本地开发（工作目录为项目根）
+    - Streamlit Cloud（工作目录为repo根）
+    - Docker（工作目录变化）
+    """
     if filepath is None:
-        # 自动定位data文件夹（相对于项目根目录）
-        current_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        filepath = os.path.join(current_dir, 'data', 'analysis', 'analysis_results.json')
+        # 方案1：从当前脚本位置往上找项目根（最可靠）
+        # 脚本位置：streamlit_app/utils/data_loader.py
+        # 项目根目录应该包含 data/ 文件夹
+        script_dir = os.path.dirname(os.path.abspath(__file__))  # streamlit_app/utils
+        project_candidates = [
+            os.path.dirname(os.path.dirname(script_dir)),  # streamlit_app的上一级（项目根）
+            os.path.dirname(script_dir),  # streamlit_app
+            os.getcwd(),  # 当前工作目录
+        ]
+        
+        possible_paths = []
+        for base_dir in project_candidates:
+            possible_paths.extend([
+                os.path.join(base_dir, 'data', 'analysis', 'analysis_results.json'),
+                os.path.join(base_dir, 'streamlit_app', 'data', 'analysis', 'analysis_results.json'),
+            ])
+        
+        # 方案2：相对路径（备选）
+        possible_paths.extend([
+            'data/analysis/analysis_results.json',
+            '../data/analysis/analysis_results.json',
+            '../../data/analysis/analysis_results.json',
+        ])
+        
+        filepath = None
+        for path in possible_paths:
+            abs_path = os.path.abspath(path)
+            if os.path.exists(abs_path):
+                filepath = abs_path
+                break
+        
+        if filepath is None:
+            # 详细的调试信息
+            debug_info = f"""
+❌ 数据文件未找到
+
+尝试查找的路径：
+"""
+            for p in possible_paths[:5]:
+                abs_p = os.path.abspath(p)
+                exists = "✓" if os.path.exists(abs_p) else "✗"
+                debug_info += f"  {exists} {abs_p}\n"
+            
+            debug_info += f"""
+当前脚本位置: {script_dir}
+当前工作目录: {os.getcwd()}
+
+请确保：
+1. 数据文件位置: <项目根>/data/analysis/analysis_results.json
+2. 项目根目录包含 streamlit_app/ 文件夹
+3. 在项目根目录运行 streamlit 应用
+"""
+            st.error(debug_info)
+            st.stop()
     
-    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-        data = json.load(f)
-    
-    results = data.get('data', [])
-    return pd.DataFrame(results)
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            data = json.load(f)
+        results = data.get('data', [])
+        return pd.DataFrame(results)
+    except Exception as e:
+        st.error(f"❌ 数据加载失败: {str(e)}\n\n文件路径: {filepath}")
+        st.stop()
 
 
 def get_sentiment_distribution(df):
