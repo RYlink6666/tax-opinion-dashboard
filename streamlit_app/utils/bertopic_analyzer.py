@@ -25,8 +25,16 @@ def get_bertopic_model() -> Optional[Any]:
         return None
     
     try:
-        # 使用支持中文的embedding模型
-        embedding_model = SentenceTransformer('distiluse-base-multilingual-cased-v2')
+        # 使用轻量中文embedding模型（100MB，比多语言模型快3倍）
+        # 从以下选项中选择：
+        # - 'shibing624/text2vec-base-chinese' (推荐，100MB，快速)
+        # - 'distiluse-base-multilingual-cased-v2' (500MB，通用)
+        try:
+            embedding_model = SentenceTransformer('shibing624/text2vec-base-chinese')
+        except:
+            # 如果轻量模型加载失败，回退到多语言模型
+            embedding_model = SentenceTransformer('distiluse-base-multilingual-cased-v2')
+        
         model = BERTopic(
             embedding_model=embedding_model,
             language="chinese",
