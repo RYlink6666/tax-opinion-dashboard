@@ -7,3 +7,4 @@ sentence-transformers>=2.2.0
 scikit-learn>=1.0.0
 scipy>=1.8.0
 numpy>=1.20.0
+kaleido>=0.2.0

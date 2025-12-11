@@ -823,3 +823,200 @@ def get_all_topics_representative_docs(df: pd.DataFrame, model: Optional[Any],
     
     except Exception as e:
         return {}
+
+
+# ============================================================================
+# Phase 7 新增函数 - F107
+# ============================================================================
+
+def export_visualization_to_file(fig: Optional[object], filename: str, format: str = 'png', 
+                                dpi: int = 300, width: int = 1200, height: int = 700) -> bytes:
+    """
+    F107: 论文级静态图导出
+    
+    将Plotly可视化导出为高分辨率的静态图（PNG/PDF/SVG）用于报告和论文
+    
+    参数:
+         fig: Plotly图对象
+         filename: 输出文件名（不含扩展名）
+         format: 导出格式 ('png', 'pdf', 'svg', 'jpg')
+         dpi: 分辨率（每英寸像素数，推荐300用于打印）
+         width: 图片宽度（像素）
+         height: 图片高度（像素）
+    
+    返回:
+         bytes: 文件内容（可用于下载）
+    """
+    if fig is None:
+        st.error("❌ 图表对象为空")
+        return None
+    
+    try:
+        # 调整图表尺寸和样式以适应导出
+        fig.update_layout(
+            width=width,
+            height=height,
+            font=dict(size=12),
+            margin=dict(l=50, r=50, t=50, b=50),
+            paper_bgcolor='white',
+            plot_bgcolor='white'
+        )
+        
+        # 使用kaleido导出（需要安装）
+        format_lower = format.lower()
+        if format_lower == 'png':
+            file_content = fig.to_image(format='png', width=width, height=height, scale=dpi/100)
+        elif format_lower == 'pdf':
+            file_content = fig.to_image(format='pdf', width=width, height=height)
+        elif format_lower == 'svg':
+            file_content = fig.to_image(format='svg', width=width, height=height)
+        elif format_lower == 'jpg':
+            file_content = fig.to_image(format='jpg', width=width, height=height, quality=95)
+        else:
+            st.error(f"❌ 不支持的格式: {format}")
+            return None
+        
+        return file_content
+    
+    except ImportError:
+        st.warning("⚠️ 需要安装kaleido: pip install kaleido")
+        # 降级方案：尝试用plotly的离线导出
+        try:
+            if format.lower() in ['html']:
+                return fig.to_html().encode('utf-8')
+            else:
+                st.error("❌ 需要kaleido库才能导出静态图片")
+                return None
+        except:
+            return None
+    
+    except Exception as e:
+        st.error(f"❌ 导出失败: {e}")
+        return None
+
+
+def batch_export_visualizations(figures_dict: dict, export_format: str = 'png', 
+                               output_folder: str = 'exports', dpi: int = 300) -> dict:
+    """
+    F107 扩展: 批量导出多个图表
+    
+    参数:
+         figures_dict: {name: fig_object} 的字典
+         export_format: 导出格式
+         output_folder: 输出文件夹路径
+         dpi: 导出分辨率
+    
+    返回:
+         {name: file_content} 的字典
+    """
+    if not figures_dict:
+        return {}
+    
+    try:
+        import os
+        
+        # 创建输出文件夹
+        os.makedirs(output_folder, exist_ok=True)
+        
+        exported = {}
+        
+        for name, fig in figures_dict.items():
+            try:
+                file_content = export_visualization_to_file(
+                    fig, 
+                    name, 
+                    format=export_format, 
+                    dpi=dpi
+                )
+                
+                if file_content:
+                    exported[name] = file_content
+            
+            except Exception as e:
+                st.warning(f"⚠️ {name}导出失败: {e}")
+        
+        return exported
+    
+    except Exception as e:
+        st.error(f"❌ 批量导出失败: {e}")
+        return {}
+
+
+def create_summary_report(model: Optional[Any], df: pd.DataFrame, topics: np.ndarray,
+                         title: str = "BERTopic分析报告") -> str:
+    """
+    F107 扩展: 生成文本格式的分析报告摘要
+    
+    参数:
+         model: BERTopic模型
+         df: 数据框
+         topics: 主题数组
+         title: 报告标题
+    
+    返回:
+         str: Markdown格式的报告文本
+    """
+    if model is None or topics is None:
+        return ""
+    
+    try:
+        topic_info = model.get_topic_info()
+        
+        report = f"""# {title}
+
+## 数据概览
+
+- **总文档数**: {len(df)}
+- **唯一主题数**: {len(np.unique(topics)) - 1}（不含噪声）
+- **噪声文档数**: {np.sum(topics == -1)} ({100*np.sum(topics == -1)/len(df):.1f}%)
+- **数据覆盖率**: {100*(len(df)-np.sum(topics==-1))/len(df):.1f}%
+
+## 主题统计
+
+| 主题ID | 主题名称 | 文档数 | 占比 | Top 5关键词 |
+|--------|---------|--------|------|-----------|
+"""
+        
+        for _, row in topic_info[topic_info['Topic'] != -1].iterrows():
+            topic_id = int(row['Topic'])
+            topic_name = row['Name']
+            count = row['Count']
+            pct = 100 * count / (len(df) - np.sum(topics == -1))
+            
+            # 获取Top 5关键词
+            topic_words = model.get_topic(topic_id)
+            if topic_words:
+                top_words = ', '.join([word for word, _ in topic_words[:5]])
+            else:
+                top_words = "N/A"
+            
+            report += f"| {topic_id} | {topic_name} | {count} | {pct:.1f}% | {top_words} |\n"
+        
+        report += f"""
+
+## 数据质量指标
+
+- **平均主题概率**: """
+        
+        if hasattr(model, 'probabilities_') and model.probabilities_ is not None:
+            avg_prob = np.max(model.probabilities_, axis=1).mean()
+            report += f"{avg_prob:.3f}\n"
+        else:
+            report += "未计算\n"
+        
+        report += f"""
+## 生成信息
+
+- **生成时间**: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
+- **使用工具**: BERTopic (Phase 4-7 分析框架)
+- **覆盖的分析函数**: F101-F109
+
+---
+
+*本报告由自动分析系统生成。建议结合人工审核确保准确性。*
+"""
+        
+        return report
+    
+    except Exception as e:
+        return f"报告生成失败: {e}"
