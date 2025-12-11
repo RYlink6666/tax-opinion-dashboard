@@ -4,8 +4,6 @@
 
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
-import plotly.express as px
 from utils.data_loader import (
     load_analysis_data, 
     search_by_keyword, 
@@ -16,6 +14,11 @@ from utils.data_loader import (
     translate_topic,
     translate_actor
 )
+from utils.chart_builder import (
+    create_distribution_pie,
+    create_horizontal_bar
+)
+from utils.components import display_opinion_expander
 
 st.set_page_config(page_title="数据搜索", page_icon="🔍", layout="wide")
 
@@ -170,12 +173,11 @@ with tab2:
             sentiment_dist = result_df['sentiment'].value_counts()
             sentiment_labels = [translate_sentiment(s) for s in sentiment_dist.index]
             
-            fig_sentiment = go.Figure(data=[go.Pie(
-                labels=sentiment_labels,
-                values=sentiment_dist.values,
-                marker=dict(colors=['#FF6B6B', '#FFD93D', '#6BCB77'])
-            )])
-            fig_sentiment.update_layout(height=400)
+            fig_sentiment = create_distribution_pie(
+                sentiment_dist.values,
+                sentiment_labels,
+                title="搜索结果情感分布"
+            )
             st.plotly_chart(fig_sentiment, use_container_width=True)
         
         with col2:
@@ -183,13 +185,11 @@ with tab2:
             topic_dist = result_df['topic'].value_counts().head(10)
             topic_labels = [translate_topic(t) for t in topic_dist.index]
             
-            fig_topic = go.Figure(data=[go.Bar(
-                y=topic_labels,
-                x=topic_dist.values,
-                orientation='h',
-                marker=dict(color=topic_dist.values, colorscale='Viridis')
-            )])
-            fig_topic.update_layout(height=400, xaxis_title="数量")
+            fig_topic = create_horizontal_bar(
+                topic_labels,
+                topic_dist.values,
+                title="搜索结果话题分布"
+            )
             st.plotly_chart(fig_topic, use_container_width=True)
         
         st.markdown("---")
@@ -201,13 +201,11 @@ with tab2:
             risk_dist = result_df['risk_level'].value_counts()
             risk_labels = [translate_risk(r) for r in risk_dist.index]
             
-            fig_risk = go.Figure(data=[go.Bar(
-                y=risk_labels,
-                x=risk_dist.values,
-                orientation='h',
-                marker=dict(color=['#FF6B6B', '#FFA500', '#FFD93D', '#6BCB77'])
-            )])
-            fig_risk.update_layout(height=400, xaxis_title="数量")
+            fig_risk = create_horizontal_bar(
+                risk_labels,
+                risk_dist.values,
+                title="搜索结果风险分布"
+            )
             st.plotly_chart(fig_risk, use_container_width=True)
         
         with col2:
@@ -215,13 +213,11 @@ with tab2:
             actor_dist = result_df['actor'].value_counts().head(10)
             actor_labels = [translate_actor(a) for a in actor_dist.index]
             
-            fig_actor = go.Figure(data=[go.Bar(
-                y=actor_labels,
-                x=actor_dist.values,
-                orientation='h',
-                marker=dict(color=actor_dist.values, colorscale='Plasma')
-            )])
-            fig_actor.update_layout(height=400, xaxis_title="数量")
+            fig_actor = create_horizontal_bar(
+                actor_labels,
+                actor_dist.values,
+                title="搜索结果参与方分布"
+            )
             st.plotly_chart(fig_actor, use_container_width=True)
         
         st.markdown("---")
