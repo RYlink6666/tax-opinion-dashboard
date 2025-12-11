@@ -318,9 +318,17 @@ with tab5:
 # ============================================================================
 with tab6:
     st.subheader("👥 参与方分析")
-    st.write("查看不同参与方的舆论特征")
+    st.write("查看不同参与方的舆论特征（自动拆分复合标签）")
     
-    actor_dist = df['actor'].value_counts()
+    # 拆分复合参与方标签（如 "consumer|government" → ["consumer", "government"]）
+    all_actors = []
+    for actors_str in df['actor']:
+        if pd.notna(actors_str):
+            actors = [a.strip() for a in str(actors_str).split('|')]
+            all_actors.extend(actors)
+    
+    actor_series = pd.Series(all_actors)
+    actor_dist = actor_series.value_counts()
     
     col1, col2 = st.columns(2)
     
@@ -336,17 +344,59 @@ with tab6:
     with col2:
         st.write("**参与方-风险分布**")
         
-        actor_risk = pd.crosstab(
-            df['actor'].apply(translate_actor),
-            df['risk_level'].apply(translate_risk)
-        )
+        # 为每个拆分后的参与方创建对应的风险分布
+        actor_risk_data = []
         
-        fig = go.Figure(data=[
-            go.Bar(name=col, x=actor_risk.index, y=actor_risk[col])
-            for col in actor_risk.columns
-        ])
-        fig.update_layout(barmode='stack', height=400)
+        for actor in actor_dist.index:
+            # 找出包含这个参与方的所有记录
+            mask = df['actor'].str.contains(actor, na=False, case=False)
+            actor_risks = df[mask]['risk_level'].apply(translate_risk).value_counts()
+            
+            for risk_type in ['严重', '高', '中', '低']:
+                actor_risk_data.append({
+                    'actor': translate_actor(actor),
+                    'risk': risk_type,
+                    'count': actor_risks.get(risk_type, 0)
+                })
+        
+        actor_risk_df = pd.DataFrame(actor_risk_data)
+        
+        fig = px.bar(
+            actor_risk_df,
+            x='actor',
+            y='count',
+            color='risk',
+            barmode='stack',
+            color_discrete_map={
+                '严重': '#8b0000',
+                '高': '#ff6b6b',
+                '中': '#ffa500',
+                '低': '#00cc96'
+            }
+        )
+        fig.update_layout(height=400)
         st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # 参与方统计表
+    st.write("**参与方统计详情**")
+    
+    actor_summary = []
+    for actor in actor_dist.index:
+        mask = df['actor'].str.contains(actor, na=False, case=False)
+        actor_df = df[mask]
+        
+        actor_summary.append({
+            '参与方': translate_actor(actor),
+            '意见数': len(actor_df),
+            '占比': f"{len(actor_df) / len(df) * 100:.1f}%",
+            '负面%': f"{(actor_df['sentiment'] == 'negative').sum() / len(actor_df) * 100:.1f}%",
+            '高风险%': f"{((actor_df['risk_level'] == 'critical') | (actor_df['risk_level'] == 'high')).sum() / len(actor_df) * 100:.1f}%"
+        })
+    
+    actor_summary_df = pd.DataFrame(actor_summary).sort_values('意见数', ascending=False)
+    st.dataframe(actor_summary_df, use_container_width=True)
 
 # ============================================================================
 # Tab 7: 代表意见提取
