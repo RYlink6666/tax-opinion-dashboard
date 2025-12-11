@@ -21,6 +21,8 @@ from utils.bertopic_analyzer import (
     set_topic_labels,
     visualize_barchart_comparison,
     search_topics,
+    get_representative_documents,
+    get_all_topics_representative_docs,
     BERTOPIC_AVAILABLE
 )
 
@@ -51,14 +53,15 @@ st.success(f"✅ 模型训练完成！发现{len(np.unique(topics))-1}个隐藏�
 
 st.markdown("---")
 
-# 创建6个Tab
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+# 创建7个Tab
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "📄 单文档主题分析",
     "🔤 Token级词分析",
     "🧹 离群值处理",
     "🏷️ 自定义标签",
     "📊 词权重对比",
-    "🔍 关键词搜索"
+    "🔍 关键词搜索",
+    "⭐ 代表文档"
 ])
 
 # ============================================================================
@@ -567,12 +570,164 @@ with tab6:
      ✓ 使用搜索结果指导主题标签优化
      """)
 
+# ============================================================================
+# Tab 7: 主题代表文档提取 (F109)
+# ============================================================================
+with tab7:
+     st.subheader("⭐ 主题代表文档提取 (F109)")
+     st.write("查看每个主题最具代表性的意见，快速理解主题的核心内容")
+     
+     st.markdown("---")
+     
+     # 两种浏览模式
+     col1, col2 = st.columns([1, 1])
+     
+     with col1:
+         mode = st.radio(
+             "选择浏览模式",
+             ["单主题详细", "全部主题概览"],
+             key="f109_mode"
+         )
+     
+     with col2:
+         top_n = st.slider(
+             "每个主题显示多少个代表文档",
+             1, 5, 3,
+             key="f109_top_n"
+         )
+     
+     st.markdown("---")
+     
+     if mode == "单主题详细":
+         # 模式1：单主题详细浏览
+         st.write("**选择主题进行详细浏览**:")
+         
+         topic_options = {}
+         topic_info = get_topics_summary(model)
+         
+         for _, row in topic_info[topic_info['Topic'] != -1].iterrows():
+             topic_id = int(row['Topic'])
+             topic_name = row['Name']
+             count = row['Count']
+             topic_options[f"{topic_name} (话题{topic_id}, {count}条)"] = topic_id
+         
+         if topic_options:
+             selected_option = st.selectbox(
+                 "选择主题",
+                 list(topic_options.keys()),
+                 key="f109_single_topic"
+             )
+             
+             selected_topic_id = topic_options[selected_option]
+             
+             st.markdown("---")
+             
+             # 获取代表文档
+             with st.spinner(f"正在提取话题{selected_topic_id}的代表文档..."):
+                 docs_df = get_representative_documents(df, model, topics, selected_topic_id, top_n)
+             
+             if not docs_df.empty:
+                 st.success(f"✅ 找到{len(docs_df)}个代表文档")
+                 
+                 st.markdown("---")
+                 
+                 # 逐个展示文档
+                 for idx, row in docs_df.iterrows():
+                     with st.expander(f"📌 #排名{row['排名']} (置信度: {row['置信度']}, 文档ID: {row['文档ID']})"):
+                         col1, col2, col3 = st.columns([1, 1, 1])
+                         
+                         with col1:
+                             st.write("**情感**:")
+                             st.write(translate_sentiment(row['情感']))
+                         
+                         with col2:
+                             st.write("**风险等级**:")
+                             st.write(translate_risk(row['风险']))
+                         
+                         with col3:
+                             st.write("**置信度**:")
+                             st.write(row['置信度'])
+                         
+                         st.markdown("---")
+                         
+                         st.write("**完整内容**:")
+                         st.markdown(f"> {row['完整内容']}")
+             else:
+                 st.warning(f"⚠️ 该主题没有可用的代表文档")
+         else:
+             st.warning("⚠️ 没有可用的主题")
+     
+     else:
+         # 模式2：全部主题概览
+         st.write("**所有主题的代表文档概览**:")
+         
+         if st.button("🔄 生成全部主题的代表文档", key="gen_all_docs_btn"):
+             with st.spinner("正在提取所有主题的代表文档..."):
+                 all_docs = get_all_topics_representative_docs(df, model, topics, top_n)
+             
+             if all_docs:
+                 st.success(f"✅ 已生成{len(all_docs)}个主题的代表文档")
+                 
+                 st.markdown("---")
+                 
+                 # 逐个主题展示
+                 topic_info = get_topics_summary(model)
+                 
+                 for topic_id in sorted(all_docs.keys()):
+                     topic_row = topic_info[topic_info['Topic'] == topic_id]
+                     
+                     if not topic_row.empty:
+                         topic_name = topic_row.iloc[0]['Name']
+                         count = topic_row.iloc[0]['Count']
+                         
+                         with st.expander(f"📚 {topic_name} (话题{topic_id}, {count}条文档)"):
+                             docs_df = all_docs[topic_id]
+                             
+                             # 简表展示
+                             st.write("**代表文档列表**:")
+                             display_df = docs_df[['排名', '内容', '情感', '风险', '置信度']].copy()
+                             st.dataframe(display_df, use_container_width=True)
+                             
+                             st.markdown("---")
+                             
+                             # 详细展示
+                             st.write("**详细内容**:")
+                             for _, doc_row in docs_df.iterrows():
+                                 col1, col2, col3 = st.columns([2, 1, 1])
+                                 
+                                 with col1:
+                                     st.write(f"**#{doc_row['排名']}** {doc_row['内容']}")
+                                 
+                                 with col2:
+                                     st.write(f"情感: {translate_sentiment(doc_row['情感'])}")
+                                 
+                                 with col3:
+                                     st.write(f"置信度: {doc_row['置信度']}")
+             else:
+                 st.warning("⚠️ 无法生成代表文档（可能模型未正确初始化）")
+     
+     st.markdown("---")
+     
+     st.info("""
+     💡 **代表文档的用途**:
+     - **快速理解主题**：看几条真实的用户意见，比看词汇更直观
+     - **质量检查**：验证主题聚类是否正确（相似的意见是否被聚到同一主题）
+     - **业务洞察**：发现用户最关心的具体问题
+     - **数据验证**：找出可能的误分类（意见内容与主题标签不符）
+     
+     **使用建议**:
+     ✓ 先用单主题模式深入理解各主题
+     ✓ 再用全部主题概览快速扫一遍质量
+     ✓ 如果发现误分类，可返回Tab3重新处理离群值
+     ✓ 用F109的反馈优化F104的自定义标签
+     """)
+
 st.markdown("---")
 
-st.subheader("📊 Phase 4-5 功能总览")
+st.subheader("📊 Phase 4-6 功能总览")
 
 st.markdown("""
-### ✅ 已实现的6个功能
+### ✅ 已实现的7个功能
 
 | 功能ID | 功能名称 | 所在位置 | 用途 |
 |--------|--------|--------|------|
@@ -582,27 +737,29 @@ st.markdown("""
 | **F104** | 自定义主题标签设置 | Tab4 | 用业务术语定制标签，提高可读性 |
 | **F105** | 多主题词权重对比 | Tab5 | 并行对比主题特征，识别相似主题 |
 | **F106** | 关键词主题搜索 | Tab6 | 快速定位特定话题，质量检查 |
+| **F109** | 主题代表文档提取 | Tab7 | 用真实意见理解主题，快速验证质量 |
 
 ### 后续计划
 
-**Phase 6** (可选): F107-F109
-- F107: 论文级静态图导出（高分辨率PNG/PDF）
+**Phase 7** (可选): F107-F108
+- F107: 论文级静态图导出（高分辨率PNG/PDF用于报告）
 - F108: 主题表示优化（更新主题名称生成模型）
-- F109: 主题代表文档提取（每个主题显示top3代表文档）
 
 ---
 
-💡 **推荐使用顺序**:
-1. **第一步**: Tab1-3（理解、分析、清理数据）
-2. **第二步**: Tab4-6（优化标签、对比分析、快速搜索）
-3. **输出**: 发布到P7进行全面展示
+💡 **完整工作流**:
+1. **理解阶段** (Tab1-2): 用F101/F102理解单个意见的分类逻辑，看关键词
+2. **清理阶段** (Tab3): 用F103改进数据质量，减少噪声文档
+3. **优化阶段** (Tab4-5): 用F104定制业务标签，用F105对比主题特征
+4. **验证阶段** (Tab6-7): 用F106快速搜索，用F109看真实意见验证质量
+5. **输出阶段**: 发布到P7_话题热度敏感度分析进行全面展示
 
-**完整工作流**:
-- 使用F101/F102理解单个意见的分类逻辑
-- 用F103改进数据质量（减少噪声）
-- 用F104定制业务相关的标签
-- 用F105/F106进行对比和验证
-- 最后输出到P7_话题热度敏感度分析页面展示
+**推荐流程**:
+```
+F101/F102(单文档调试) → F103(质量改进) → F104(标签定制) 
+→ F105/F106(对比+搜索) → F109(最终验证) → 导出P7
+```
 
+**数据覆盖**: 2,297个分析意见 (99.3% 覆盖率) | **主题数**: 8-12个隐藏主题
 **技术要求**: BERTopic已启用 `calculate_probabilities=True`
 """)

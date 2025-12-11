@@ -716,3 +716,110 @@ def search_topics(model: Optional[Any], keywords: List[str], top_n: int = 5) -> 
     except Exception as e:
         st.warning(f"关键词搜索失败: {e}")
         return pd.DataFrame()
+
+
+# ============================================================================
+# Phase 6 新增函数 - F109
+# ============================================================================
+
+def get_representative_documents(df: pd.DataFrame, model: Optional[Any], topics: np.ndarray, 
+                                 topic_id: int, top_n: int = 3) -> pd.DataFrame:
+    """
+    F109: 主题代表文档提取
+    
+    获取某个主题最具代表性的Top N文档，用于理解主题的核心内容
+    
+    参数:
+         df: 数据框（包含source_text, sentiment, risk_level等列）
+         model: BERTopic模型
+         topics: 主题数组
+         topic_id: 要提取代表文档的主题ID
+         top_n: 返回多少个代表文档（默认3）
+    
+    返回:
+         包含代表文档及其属性的DataFrame
+    """
+    if model is None or topics is None or df is None:
+        return pd.DataFrame()
+    
+    try:
+        # 获取该主题的所有文档索引
+        mask = topics == topic_id
+        
+        if not mask.any():
+            return pd.DataFrame()
+        
+        # 获取该主题的概率矩阵（如果有）
+        if hasattr(model, 'probabilities_') and model.probabilities_ is not None:
+            # 按概率排序（概率高 = 代表性强）
+            topic_probs = model.probabilities_[mask, topic_id]
+            indices = np.argsort(topic_probs)[::-1][:top_n]
+            doc_indices = np.where(mask)[0][indices]
+        else:
+            # 没有概率信息，返回前top_n个文档
+            doc_indices = np.where(mask)[0][:top_n]
+        
+        # 构建结果DataFrame
+        results = []
+        
+        for idx, doc_idx in enumerate(doc_indices, 1):
+            doc = df.iloc[doc_idx]
+            
+            # 获取该文档对该主题的置信度
+            conf = None
+            if hasattr(model, 'probabilities_') and model.probabilities_ is not None:
+                if doc_idx < len(model.probabilities_):
+                    conf = model.probabilities_[doc_idx, topic_id]
+            
+            results.append({
+                '排名': idx,
+                '文档ID': doc_idx,
+                '内容': doc['source_text'][:100] + ('...' if len(doc['source_text']) > 100 else ''),
+                '完整内容': doc['source_text'],
+                '情感': doc.get('sentiment', '未知'),
+                '风险': doc.get('risk_level', '未知'),
+                '置信度': f"{conf:.2%}" if conf else "N/A"
+            })
+        
+        result_df = pd.DataFrame(results)
+        return result_df
+    
+    except Exception as e:
+        st.warning(f"代表文档提取失败: {e}")
+        return pd.DataFrame()
+
+
+def get_all_topics_representative_docs(df: pd.DataFrame, model: Optional[Any], 
+                                       topics: np.ndarray, top_n: int = 3) -> dict:
+    """
+    F109 扩展: 为所有主题批量提取代表文档
+    
+    参数:
+         df: 数据框
+         model: BERTopic模型
+         topics: 主题数组
+         top_n: 每个主题的代表文档数
+    
+    返回:
+         {topic_id: representative_docs_df} 的字典
+    """
+    if model is None:
+        return {}
+    
+    try:
+        topic_info = model.get_topic_info()
+        all_docs = {}
+        
+        for topic_id in topic_info['Topic']:
+            if topic_id == -1:  # 跳过噪声
+                continue
+            
+            docs_df = get_representative_documents(df, model, topics, topic_id, top_n)
+            
+            if not docs_df.empty:
+                all_docs[topic_id] = docs_df
+        
+        return all_docs
+    
+    except Exception as e:
+        return {}
