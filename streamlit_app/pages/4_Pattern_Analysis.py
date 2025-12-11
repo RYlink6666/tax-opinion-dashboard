@@ -6,7 +6,13 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-from utils.data_loader import load_analysis_data
+from utils.data_loader import (
+    load_analysis_data,
+    translate_sentiment,
+    translate_risk,
+    translate_topic,
+    translate_actor
+)
 
 st.set_page_config(page_title="模式分析", page_icon="🔍", layout="wide")
 

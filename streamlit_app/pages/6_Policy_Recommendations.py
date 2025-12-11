@@ -5,7 +5,13 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.data_loader import load_analysis_data
+from utils.data_loader import (
+    load_analysis_data,
+    translate_sentiment,
+    translate_risk,
+    translate_topic,
+    translate_actor
+)
 
 st.set_page_config(page_title="政策建议", page_icon="💡", layout="wide")
 
@@ -74,7 +80,7 @@ with tabs[0]:
     topic_dist = consumer_df['topic'].value_counts().head(5)
     for topic, count in topic_dist.items():
         pct = count / len(consumer_df) * 100
-        st.write(f"• {topic}: {pct:.1f}%")
+        st.write(f"• {translate_topic(topic)}: {pct:.1f}%")
     
     st.info("""
     **消费者心态特征**:
@@ -92,22 +98,22 @@ with tabs[1]:
     
     col1, col2 = st.columns(2)
     with col1:
-        st.write("**商家舆论分布**")
-        for sent, count in sent_dist.items():
-            pct = count / len(business_df) * 100
-            st.write(f"{sent}: {pct:.1f}%")
-    
-    with col2:
-        st.write("**商家风险认知**")
-        for risk, count in risk_dist.items():
-            pct = count / len(business_df) * 100
-            st.write(f"{risk}: {pct:.1f}%")
-    
-    st.write("**商家主要关注话题**")
-    topic_dist = business_df['topic'].value_counts().head(5)
-    for topic, count in topic_dist.items():
-        pct = count / len(business_df) * 100
-        st.write(f"• {topic}: {pct:.1f}%")
+         st.write("**商家舆论分布**")
+         for sent, count in sent_dist.items():
+             pct = count / len(business_df) * 100
+             st.write(f"{translate_sentiment(sent)}: {pct:.1f}%")
+     
+     with col2:
+         st.write("**商家风险认知**")
+         for risk, count in risk_dist.items():
+             pct = count / len(business_df) * 100
+             st.write(f"{translate_risk(risk)}: {pct:.1f}%")
+     
+     st.write("**商家主要关注话题**")
+     topic_dist = business_df['topic'].value_counts().head(5)
+     for topic, count in topic_dist.items():
+         pct = count / len(business_df) * 100
+         st.write(f"• {translate_topic(topic)}: {pct:.1f}%")
     
     st.warning("""
     **商家困境特征**:
@@ -129,7 +135,7 @@ with tabs[2]:
     sent_dist = policy_mentions['sentiment'].value_counts()
     for sent, count in sent_dist.items():
         pct = count / total_policy * 100
-        st.write(f"{sent}: {pct:.1f}%")
+        st.write(f"{translate_sentiment(sent)}: {pct:.1f}%")
     
     st.info("""
     **认知问题**:
@@ -153,13 +159,13 @@ with tabs[3]:
     topic_dist = high_risk['topic'].value_counts()
     for topic, count in topic_dist.items():
         pct = count / len(high_risk) * 100
-        st.write(f"• {topic}: {pct:.1f}%")
+        st.write(f"• {translate_topic(topic)}: {pct:.1f}%")
     
     st.write("**高风险的主要参与方**")
     actor_dist = high_risk['actor'].value_counts()
     for actor, count in actor_dist.items():
         pct = count / len(high_risk) * 100
-        st.write(f"• {actor}: {pct:.1f}%")
+        st.write(f"• {translate_actor(actor)}: {pct:.1f}%")
     
     st.error("""
     **高风险风险点**:

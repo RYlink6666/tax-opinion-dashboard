@@ -6,7 +6,13 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-from utils.data_loader import load_analysis_data
+from utils.data_loader import (
+    load_analysis_data,
+    translate_sentiment,
+    translate_risk,
+    translate_topic,
+    translate_actor
+)
 
 st.set_page_config(page_title="参与方分析", page_icon="👥", layout="wide")
 
@@ -31,7 +37,7 @@ with col1:
     st.write("")
     for actor, count in actor_dist.items():
         pct = count / len(df) * 100
-        st.write(f"**{actor}**: {count} ({pct:.1f}%)")
+        st.write(f"**{translate_actor(actor)}**: {count} ({pct:.1f}%)")
 
 with col2:
     fig_actor = go.Figure(data=[go.Pie(
@@ -129,18 +135,18 @@ for actor in actors:
             st.metric("身份识别置信度", f"{avg_conf:.3f}")
         
         # 情感分布
-        st.write("**情感分布**")
-        sent_dist = actor_df['sentiment'].value_counts()
-        for sent, count in sent_dist.items():
-            pct = count / len(actor_df) * 100
-            st.write(f"{sent}: {count} ({pct:.1f}%)")
-        
-        # 主要话题
-        st.write("**关注的话题** (Top 5)")
-        topic_dist = actor_df['topic'].value_counts().head(5)
-        for topic, count in topic_dist.items():
-            pct = count / len(actor_df) * 100
-            st.write(f"{topic}: {count} ({pct:.1f}%)")
+         st.write("**情感分布**")
+         sent_dist = actor_df['sentiment'].value_counts()
+         for sent, count in sent_dist.items():
+             pct = count / len(actor_df) * 100
+             st.write(f"{translate_sentiment(sent)}: {count} ({pct:.1f}%)")
+         
+         # 主要话题
+         st.write("**关注的话题** (Top 5)")
+         topic_dist = actor_df['topic'].value_counts().head(5)
+         for topic, count in topic_dist.items():
+             pct = count / len(actor_df) * 100
+             st.write(f"{translate_topic(topic)}: {count} ({pct:.1f}%)")
         
         # 主要模式
         st.write("**表达模式** (Top 5)")
