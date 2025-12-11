@@ -6,7 +6,6 @@
 
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
 from utils.data_loader import (
     load_analysis_data,
@@ -15,6 +14,11 @@ from utils.data_loader import (
     translate_topic,
     translate_actor
 )
+from utils.chart_builder import (
+    create_horizontal_bar,
+    create_stacked_bar
+)
+from utils.components import display_opinion_expander
 import json
 
 st.set_page_config(page_title="互动分析工具", page_icon="🔮", layout="wide")
@@ -113,14 +117,13 @@ with tab2:
     with col1:
         st.write("**话题热度排行**")
         topic_dist = df['topic'].value_counts()
+        topic_labels = [translate_topic(t) for t in topic_dist.index]
         
-        fig = go.Figure(data=[go.Bar(
-            y=[translate_topic(t) for t in topic_dist.index],
-            x=topic_dist.values,
-            orientation='h',
-            marker=dict(color=topic_dist.values, colorscale='Blues')
-        )])
-        fig.update_layout(height=400, title="")
+        fig = create_horizontal_bar(
+            topic_labels,
+            topic_dist.values,
+            title="话题热度排行"
+        )
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
@@ -131,11 +134,10 @@ with tab2:
             df['sentiment'].apply(translate_sentiment)
         )
         
-        fig = go.Figure(data=[
-            go.Bar(name=col, x=cross_tab.index, y=cross_tab[col])
-            for col in cross_tab.columns
-        ])
-        fig.update_layout(barmode='stack', height=400)
+        fig = create_stacked_bar(
+            cross_tab,
+            title="话题-情感交叉分布"
+        )
         st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("---")
@@ -433,21 +435,20 @@ with tab7:
     st.write(f"**{translate_topic(selected_topic)} 的{top_n}条代表意见**")
     
     for rank, (idx, row) in enumerate(topic_data.iterrows(), 1):
-        with st.container():
-            col1, col2, col3 = st.columns([3, 1, 1])
-            
-            with col1:
-                st.write(f"**#{rank}** {row['source_text'][:100]}...")
-            
-            with col2:
-                st.metric("置信度", f"{row['sentiment_confidence']:.0%}")
-            
-            with col3:
-                sentiment_emoji = "🔴" if row['sentiment'] == 'negative' else ("🟢" if row['sentiment'] == 'positive' else "⚪")
-                st.write(sentiment_emoji)
-            
-            with st.expander("完整内容"):
-                st.write(row['source_text'])
+        col1, col2, col3 = st.columns([3, 1, 1])
+        
+        with col1:
+            st.write(f"**#{rank}** {row['source_text'][:100]}...")
+        
+        with col2:
+            st.metric("置信度", f"{row['sentiment_confidence']:.0%}")
+        
+        with col3:
+            sentiment_emoji = "🔴" if row['sentiment'] == 'negative' else ("🟢" if row['sentiment'] == 'positive' else "⚪")
+            st.write(sentiment_emoji)
+        
+        with st.expander("完整内容"):
+            display_opinion_expander(row, show_fields=['sentiment', 'risk_level', 'topic', 'actor'])
 
 # ============================================================================
 # Tab 8: 导出报告
