@@ -13,6 +13,8 @@ warnings.filterwarnings('ignore')
 try:
     from bertopic import BERTopic
     from sentence_transformers import SentenceTransformer
+    from umap import UMAP
+    from hdbscan import HDBSCAN
     BERTOPIC_AVAILABLE = True
 except ImportError:
     BERTOPIC_AVAILABLE = False
@@ -35,11 +37,30 @@ def get_bertopic_model() -> Optional[Any]:
             # 如果轻量模型加载失败，回退到多语言模型
             embedding_model = SentenceTransformer('distiluse-base-multilingual-cased-v2')
         
+        # 优化HDBSCAN聚类参数（防止话题重复）
+        umap_model = UMAP(
+            n_neighbors=15,
+            n_components=5,
+            min_dist=0.0,
+            metric='cosine',
+            random_state=42
+        )
+        
+        hdbscan_model = HDBSCAN(
+            min_cluster_size=10,      # ← 提高聚类最小大小（防止噪音被分为单独话题）
+            min_samples=5,            # ← 聚类密度要求
+            prediction_data=True      # ← 支持新文档预测
+        )
+        
         model = BERTopic(
             embedding_model=embedding_model,
+            umap_model=umap_model,
+            hdbscan_model=hdbscan_model,
             language="chinese",
             calculate_probabilities=True,
-            verbose=False
+            verbose=False,
+            top_n_words=10,
+            nr_topics="auto"          # ← 自动优化主题数
         )
         return model
     except Exception as e:
