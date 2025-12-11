@@ -40,8 +40,10 @@ with col1:
         st.write(f"**{translate_actor(actor)}**: {count} ({pct:.1f}%)")
 
 with col2:
+    # 翻译参与方标签
+    actor_labels = [translate_actor(actor) for actor in actor_dist.index]
     fig_actor = go.Figure(data=[go.Pie(
-        labels=actor_dist.index,
+        labels=actor_labels,
         values=actor_dist.values,
         hole=0.3,
         marker=dict(colors=px.colors.qualitative.Set2)
@@ -56,9 +58,13 @@ st.subheader("2️⃣ 参与方的情感倾向")
 
 actor_sentiment = pd.crosstab(df['actor'], df['sentiment'])
 
+# 翻译参与方和情感标签
+actor_labels_x = [translate_actor(actor) for actor in actor_sentiment.index]
+sentiment_labels = [translate_sentiment(sent) for sent in actor_sentiment.columns]
+
 fig_sentiment = go.Figure(data=[
-    go.Bar(name=sent, x=actor_sentiment.index, y=actor_sentiment[sent])
-    for sent in actor_sentiment.columns
+    go.Bar(name=sentiment_labels[i], x=actor_labels_x, y=actor_sentiment[actor_sentiment.columns[i]])
+    for i in range(len(actor_sentiment.columns))
 ])
 fig_sentiment.update_layout(
     barmode='group',
@@ -77,9 +83,13 @@ st.subheader("3️⃣ 参与方的风险分布")
 actor_risk = pd.crosstab(df['actor'], df['risk_level'])
 risk_order = ['critical', 'high', 'medium', 'low']
 
+# 翻译参与方和风险等级标签
+actor_labels_x = [translate_actor(actor) for actor in actor_risk.index]
+risk_labels = [translate_risk(risk_type) for risk_type in risk_order]
+
 fig_risk = go.Figure(data=[
-    go.Bar(name=risk_type, x=actor_risk.index, y=actor_risk[risk_type] if risk_type in actor_risk.columns else [0]*len(actor_risk))
-    for risk_type in risk_order
+    go.Bar(name=risk_labels[i], x=actor_labels_x, y=actor_risk[risk_order[i]] if risk_order[i] in actor_risk.columns else [0]*len(actor_risk))
+    for i in range(len(risk_order))
 ])
 fig_risk.update_layout(
     barmode='stack',
@@ -97,10 +107,14 @@ st.subheader("4️⃣ 参与方的主要话题")
 
 actor_topic = pd.crosstab(df['actor'], df['topic'])
 
+# 翻译参与方和话题标签
+actor_labels_y = [translate_actor(actor) for actor in actor_topic.index]
+topic_labels_x = [translate_topic(topic) for topic in actor_topic.columns]
+
 fig_topic_heatmap = go.Figure(data=go.Heatmap(
     z=actor_topic.values,
-    x=actor_topic.columns,
-    y=actor_topic.index,
+    x=topic_labels_x,
+    y=actor_labels_y,
     colorscale='YlOrRd'
 ))
 fig_topic_heatmap.update_layout(height=400, xaxis_title="话题", yaxis_title="参与方")
@@ -135,18 +149,18 @@ for actor in actors:
             st.metric("身份识别置信度", f"{avg_conf:.3f}")
         
         # 情感分布
-         st.write("**情感分布**")
-         sent_dist = actor_df['sentiment'].value_counts()
-         for sent, count in sent_dist.items():
-             pct = count / len(actor_df) * 100
-             st.write(f"{translate_sentiment(sent)}: {count} ({pct:.1f}%)")
-         
-         # 主要话题
-         st.write("**关注的话题** (Top 5)")
-         topic_dist = actor_df['topic'].value_counts().head(5)
-         for topic, count in topic_dist.items():
-             pct = count / len(actor_df) * 100
-             st.write(f"{translate_topic(topic)}: {count} ({pct:.1f}%)")
+        st.write("**情感分布**")
+        sent_dist = actor_df['sentiment'].value_counts()
+        for sent, count in sent_dist.items():
+            pct = count / len(actor_df) * 100
+            st.write(f"{translate_sentiment(sent)}: {count} ({pct:.1f}%)")
+        
+        # 主要话题
+        st.write("**关注的话题** (Top 5)")
+        topic_dist = actor_df['topic'].value_counts().head(5)
+        for topic, count in topic_dist.items():
+            pct = count / len(actor_df) * 100
+            st.write(f"{translate_topic(topic)}: {count} ({pct:.1f}%)")
         
         # 主要模式
         st.write("**表达模式** (Top 5)")

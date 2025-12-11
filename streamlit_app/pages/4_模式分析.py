@@ -60,9 +60,11 @@ pattern_sentiment = pd.crosstab(df['pattern'], df['sentiment'])
 # 只显示前8个模式
 pattern_sentiment = pattern_sentiment.head(8)
 
+# 翻译情感标签
+sentiment_labels = [translate_sentiment(col) for col in pattern_sentiment.columns]
 fig_pattern_sent = go.Figure(data=[
-    go.Bar(name=col, x=pattern_sentiment.index, y=pattern_sentiment[col])
-    for col in pattern_sentiment.columns
+    go.Bar(name=sentiment_labels[i], x=pattern_sentiment.index, y=pattern_sentiment[pattern_sentiment.columns[i]])
+    for i in range(len(pattern_sentiment.columns))
 ])
 fig_pattern_sent.update_layout(
     barmode='group', 
@@ -80,9 +82,11 @@ st.subheader("3️⃣ 模式与话题的关系")
 
 pattern_topic = pd.crosstab(df['pattern'].head(8), df['topic'])
 
+# 翻译话题标签
+topic_labels = [translate_topic(col) for col in pattern_topic.columns]
 fig_heatmap = go.Figure(data=go.Heatmap(
     z=pattern_topic.values,
-    x=pattern_topic.columns,
+    x=topic_labels,
     y=pattern_topic.index,
     colorscale='Blues'
 ))
@@ -97,9 +101,11 @@ st.subheader("4️⃣ 模式与风险等级的关系")
 pattern_risk = pd.crosstab(df['pattern'].head(8), df['risk_level'])
 risk_order = ['critical', 'high', 'medium', 'low']
 
+# 翻译风险等级标签
+risk_labels = [translate_risk(risk_type) for risk_type in risk_order]
 fig_pattern_risk = go.Figure(data=[
-    go.Bar(name=risk_type, x=pattern_risk.index, y=pattern_risk[risk_type] if risk_type in pattern_risk.columns else [0]*len(pattern_risk))
-    for risk_type in risk_order
+    go.Bar(name=risk_labels[i], x=pattern_risk.index, y=pattern_risk[risk_order[i]] if risk_order[i] in pattern_risk.columns else [0]*len(pattern_risk))
+    for i in range(len(risk_order))
 ])
 fig_pattern_risk.update_layout(
     barmode='stack',

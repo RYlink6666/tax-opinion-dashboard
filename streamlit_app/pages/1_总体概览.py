@@ -42,8 +42,10 @@ with col1:
     st.write(f"**平均置信度**: {avg_conf:.2f}")
 
 with col2:
+    # 翻译情感标签
+    sentiment_labels = [translate_sentiment(k) for k in sentiment_dist.index]
     fig = go.Figure(data=[go.Pie(
-        labels=sentiment_dist.index,
+        labels=sentiment_labels,
         values=sentiment_dist.values,
         marker=dict(colors=['#ef553b', '#636efa', '#00cc96'])
     )])
@@ -56,8 +58,10 @@ col1, col2 = st.columns([2, 1])
 
 with col1:
     topic_dist = df['topic'].value_counts().head(10)
+    # 翻译话题标签
+    topic_labels = [translate_topic(k) for k in topic_dist.index]
     fig = go.Figure(data=[go.Bar(
-        y=topic_dist.index,
+        y=topic_labels,
         x=topic_dist.values,
         orientation='h',
         marker=dict(color=topic_dist.values, colorscale='Blues')
@@ -81,8 +85,10 @@ risk_ordered = {k: risk_dist.get(k, 0) for k in risk_order}
 col1, col2 = st.columns(2)
 
 with col1:
+    # 翻译风险等级标签
+    risk_labels = [translate_risk(k) for k in risk_ordered.keys()]
     fig = go.Figure(data=[go.Bar(
-        x=list(risk_ordered.keys()),
+        x=risk_labels,
         y=list(risk_ordered.values()),
         marker=dict(color=['#8b0000', '#ff6b6b', '#ffa500', '#00cc96'])
     )])
@@ -100,8 +106,10 @@ st.subheader("4️⃣ 参与方分析")
 
 actor_dist = df['actor'].value_counts().head(10)
 
+# 翻译参与方标签
+actor_labels = [translate_actor(k) for k in actor_dist.index]
 fig = go.Figure(data=[go.Bar(
-    x=actor_dist.index,
+    x=actor_labels,
     y=actor_dist.values,
     marker=dict(color=actor_dist.values, colorscale='Viridis')
 )])

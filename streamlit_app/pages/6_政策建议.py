@@ -69,8 +69,10 @@ with tabs[0]:
             st.write(f"{sent}: {pct:.1f}%")
     
     with col2:
+        # 翻译情感标签
+        sentiment_labels = [translate_sentiment(sent) for sent in sent_dist.index]
         fig = go.Figure(data=[go.Pie(
-            labels=sent_dist.index,
+            labels=sentiment_labels,
             values=sent_dist.values,
             marker=dict(colors=['#ef553b', '#636efa', '#00cc96'])
         )])
