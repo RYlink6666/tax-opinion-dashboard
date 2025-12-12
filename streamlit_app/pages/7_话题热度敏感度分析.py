@@ -267,71 +267,64 @@ st.info("""
 st.markdown("---")
 
 # 8. BERTopic深度主题分析（高级功能）
-if BERTOPIC_AVAILABLE:
-    st.subheader("8️⃣ 🤖 深度主题建模分析 (基于BERTopic)")
-    st.write("使用AI提取文本中的隐藏主题关系，而非依赖预定义分类")
-    
-    # 尝试加载预训练模型，如果不存在则实时训练
-    import os
-    import json
-    from pathlib import Path
-    
-    pretrained_model_path = Path(__file__).parent.parent / "data" / "bertopic_model"
-    
-    if pretrained_model_path.exists():
-        # 使用预训练模型（秒开）
+st.subheader("8️⃣ 🤖 深度主题建模分析 (预计算结果)")
+st.write("使用AI预先提取文本中的隐藏主题关系")
+
+# 直接加载预计算的话题结果JSON（无需BERTopic库）
+import json
+from pathlib import Path
+
+pretrained_model_path = Path(__file__).parent.parent / "data" / "bertopic_model"
+
+if pretrained_model_path.exists():
+    # 加载预计算的话题结果
+    result_file = pretrained_model_path / "topics.json"
+    if result_file.exists():
         try:
-            from bertopic import BERTopic
-            model = BERTopic.load(str(pretrained_model_path))
+            with open(result_file, 'r', encoding='utf-8') as f:
+                results = json.load(f)
             
-            # 加载预计算的话题结果
-            result_file = pretrained_model_path / "topics_result.json"
-            if result_file.exists():
-                with open(result_file, 'r', encoding='utf-8') as f:
-                    results = json.load(f)
-                topics = np.array(results['topics'])
-                probs = np.array(results['probabilities']) if results['probabilities'] else None
-            else:
-                texts = df['source_text'].tolist()
-                topics, probs = model.fit_transform(texts)
-        except Exception as e:
-            st.warning(f"加载预训练模型失败，改用实时训练: {e}")
-            texts = df['source_text'].tolist()
-            topics, probs, model = train_bertopic(texts)
-    else:
-        # 预训练模型不存在，实时训练（首次运行）
-        texts = df['source_text'].tolist()
-        topics, probs, model = train_bertopic(texts)
-    
-    if model is not None and topics is not None:
-        # 显示主题统计
-        topic_info = get_topics_summary(model)
-        
-        if not topic_info.empty:
+            # 显示主题统计
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                st.metric("发现的隐藏主题数", len(topic_info) - 1)  # 排除-1主题
+                st.metric("发现的隐藏主题数", results['num_topics'])
             
             with col2:
-                largest_topic = topic_info.nlargest(1, 'Count').iloc[0]
-                st.metric("最大主题", f"{int(largest_topic['Count'])} 条")
+                max_count = max([t['count'] for t in results['topics']])
+                st.metric("最大主题", f"{max_count} 条")
             
             with col3:
                 st.metric("模型置信度", "高")
             
             st.markdown("---")
             
-            # Tab页面组织BERTopic可视化
-            tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-                "📊 主题分布",
-                "📄 文档分布",
-                "🔗 主题相似度",
-                "📈 主题层级",
-                "📝 主题列表",
-                "🌳 主题分层",
-                "📊 词频分布"
+            # 简化显示：只显示主题列表
+            st.write("### 🔍 发现的隐藏主题")
+            
+            topics_df = pd.DataFrame([
+                {
+                    'ID': t['id'],
+                    '主题名': t['name'],
+                    '包含文档数': t['count'],
+                    '占比': f"{t['count']/results['num_documents']*100:.1f}%"
+                }
+                for t in results['topics']
             ])
+            
+            st.dataframe(topics_df, use_container_width=True, hide_index=True)
+            
+            # 注释掉原有的Tab逻辑
+            if False:  # 禁用所有Tab
+                tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+                    "📊 主题分布",
+                    "📄 文档分布",
+                    "🔗 主题相似度",
+                    "📈 主题层级",
+                    "📝 主题列表",
+                    "🌳 主题分层",
+                    "📊 词频分布"
+                ])
             
             with tab1:
                 st.write("**主题在2D空间中的分布（Umap降维）**")
@@ -453,7 +446,7 @@ else:
 st.markdown("---")
 
 # 9. 深度话题分析 (Advanced BERTopic) - 从P8合并
-if BERTOPIC_AVAILABLE:
+if False:  # 禁用复杂的高级BERTopic
     st.subheader("9️⃣ 🔬 深度话题分析 (Advanced BERTopic)")
     st.write("使用BERTopic的高级功能进行深层主题发现和分析")
     
