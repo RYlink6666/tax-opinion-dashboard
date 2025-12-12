@@ -1,0 +1,11 @@
+{
+  "embedding_model": "all-MiniLM-L6-v2",
+  "language": "chinese",
+  "calculate_probabilities": true,
+  "nr_topics": "auto",
+  "top_n_words": 10,
+  "min_topic_size": 10,
+  "n_gram_range": [1, 1],
+  "model_status": "pretraining_complete",
+  "version": "0.17.4"
+}
