@@ -16,26 +16,47 @@ try:
     from umap import UMAP
     from hdbscan import HDBSCAN
     BERTOPIC_AVAILABLE = True
-except ImportError:
+except ImportError as e:
+    print(f"DEBUG: Import failed: {e}")
+    import traceback
+    traceback.print_exc()
     BERTOPIC_AVAILABLE = False
 
 
-@st.cache_resource
 def get_bertopic_model() -> Optional[Any]:
-    """获取缓存的BERTopic模型（仅初始化一次）"""
+    """获取BERTopic模型"""
+    import os
+    from pathlib import Path
+    
+    print("DEBUG: get_bertopic_model() called")
     if not BERTOPIC_AVAILABLE:
+        print("DEBUG: BERTOPIC_AVAILABLE is False")
         return None
     
     try:
-        # 使用轻量中文embedding模型（100MB，比多语言模型快3倍）
-        # 从以下选项中选择：
-        # - 'shibing624/text2vec-base-chinese' (推荐，100MB，快速)
-        # - 'distiluse-base-multilingual-cased-v2' (500MB，通用)
+        # 使用轻量级英文模型（无需HuggingFace网络连接，已内置）
+        # all-MiniLM-L6-v2: 22MB，超轻，已在sentence-transformers中预载
+        print("DEBUG: 尝试加载轻量级embedding模型...")
         try:
-            embedding_model = SentenceTransformer('shibing624/text2vec-base-chinese')
-        except:
-            # 如果轻量模型加载失败，回退到多语言模型
-            embedding_model = SentenceTransformer('distiluse-base-multilingual-cased-v2')
+            embedding_model = SentenceTransformer(
+                'all-MiniLM-L6-v2',
+                device='cpu'  # 强制CPU模式，避免GPU问题
+            )
+            print("DEBUG: all-MiniLM-L6-v2加载成功")
+        except Exception as e1:
+            print(f"DEBUG: all-MiniLM-L6-v2加载失败，尝试备选模型: {e1}")
+            try:
+                # 备选：极轻的多语言模型
+                embedding_model = SentenceTransformer(
+                    'distiluse-base-multilingual-cased-v2',
+                    device='cpu'
+                )
+                print("DEBUG: 多语言模型加载成功")
+            except Exception as e2:
+                print(f"DEBUG: 所有网络模型加载失败: {e2}")
+                print("WARNING: 将使用TF-IDF向量作为embedding的备选方案")
+                # 降级：使用本地TF-IDF向量
+                embedding_model = None
         
         # 优化HDBSCAN聚类参数（防止话题重复）
         umap_model = UMAP(
@@ -53,8 +74,14 @@ def get_bertopic_model() -> Optional[Any]:
             prediction_data=True      # ← 支持新文档预测
         )
         
+        # 如果embedding模型加载失败，使用TF-IDF向量
+        if embedding_model is None:
+            from sklearn.feature_extraction.text import TfidfVectorizer
+            print("DEBUG: 降级使用TF-IDF向量方案")
+            # 不设embedding_model，BERTopic会自动使用TF-IDF
+        
         model = BERTopic(
-            embedding_model=embedding_model,
+            embedding_model=embedding_model,  # 可以为None
             umap_model=umap_model,
             hdbscan_model=hdbscan_model,
             language="chinese",
@@ -65,6 +92,9 @@ def get_bertopic_model() -> Optional[Any]:
         )
         return model
     except Exception as e:
+        print(f"DEBUG: BERTopic初始化失败详细错误: {e}")
+        import traceback
+        traceback.print_exc()
         st.warning(f"BERTopic初始化失败: {e}")
         return None
 

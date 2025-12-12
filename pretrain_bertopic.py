@@ -6,6 +6,11 @@
 
 import sys
 import os
+
+# === 在导入任何库之前设置HuggingFace镜像源 ===
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+os.environ['HF_HOME'] = os.path.expanduser('~/.cache/huggingface')
+
 import pickle
 import json
 import pandas as pd
@@ -15,64 +20,95 @@ from pathlib import Path
 # 添加streamlit_app到路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'streamlit_app'))
 
+# 设置UTF-8编码
+if sys.stdout.encoding != 'utf-8':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 from utils.data_loader import load_analysis_data
 from utils.bertopic_analyzer import get_bertopic_model
 
 print("=" * 60)
-print("🚀 BERTopic 离线预训练脚本")
+print("BERTopic offline pretraining script")
 print("=" * 60)
 print()
 
 # 1. 加载数据
-print("1️⃣  加载数据...")
+print("1. Loading data...")
 try:
     df = load_analysis_data()
     texts = df['source_text'].tolist()
-    print(f"   ✅ 已加载 {len(texts)} 条舆论")
+    print(f"   OK: Loaded {len(texts)} opinions")
 except Exception as e:
-    print(f"   ❌ 加载失败: {e}")
+    print(f"   ERROR: {e}")
     sys.exit(1)
 
 # 2. 初始化BERTopic模型
 print()
-print("2️⃣  初始化BERTopic模型...")
+print("2. Initializing BERTopic model...")
 try:
+    print("   DEBUG: Attempting to get BERTopic model...")
     model = get_bertopic_model()
+    print(f"   DEBUG: Model returned: {model}")
     if model is None:
-        print("   ❌ 模型初始化失败")
+        print("   ERROR: Model initialization failed (returned None)")
         sys.exit(1)
-    print("   ✅ 模型初始化成功")
+    print("   OK: Model initialized")
 except Exception as e:
-    print(f"   ❌ 初始化失败: {e}")
+    print(f"   ERROR: {e}")
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
 
 # 3. 训练模型
 print()
-print("3️⃣  训练BERTopic模型（这会花费3-5分钟）...")
+print("3. Training BERTopic model (this will take 3-5 minutes)...")
 try:
     topics, probs = model.fit_transform(texts)
-    print(f"   ✅ 训练完成！发现 {len(np.unique(topics))} 个主题")
+    print(f"   OK: Training complete! Found {len(np.unique(topics))} topics")
 except Exception as e:
-    print(f"   ❌ 训练失败: {e}")
+    print(f"   ERROR: {e}")
     sys.exit(1)
 
 # 4. 保存模型
 print()
-print("4️⃣  保存模型...")
+print("4. Saving model...")
 model_dir = Path(__file__).parent / "streamlit_app" / "data" / "bertopic_model"
-model_dir.mkdir(parents=True, exist_ok=True)
+
+# 强制删除旧目录（如果存在）
+import shutil
+if model_dir.exists():
+    try:
+        shutil.rmtree(str(model_dir), ignore_errors=True)
+        print(f"   Cleaned old model directory")
+    except:
+        pass
+
+# 重新创建目录
+try:
+    model_dir.mkdir(parents=True, exist_ok=True)
+    import os
+    os.chmod(str(model_dir), 0o777)  # 设置完全权限
+    print(f"   Model directory ready: {model_dir}")
+except Exception as e:
+    print(f"   ERROR creating directory: {e}")
+    sys.exit(1)
 
 try:
-    # 保存BERTopic模型
-    model.save(str(model_dir))
-    print(f"   ✅ 模型已保存到: {model_dir}")
+    # 用pickle保存BERTopic模型（避免BERTopic.save()的bug）
+    model_file = model_dir / "model.pkl"
+    with open(model_file, 'wb') as f:
+        pickle.dump(model, f)
+    print(f"   OK: Model saved to {model_file}")
 except Exception as e:
-    print(f"   ❌ 保存失败: {e}")
+    print(f"   ERROR saving: {e}")
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
 
 # 5. 保存话题结果
 print()
-print("5️⃣  保存话题分析结果...")
+print("5. Saving topic analysis results...")
 try:
     results = {
         'topics': topics.tolist(),
@@ -86,33 +122,34 @@ try:
     with open(result_file, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
     
-    print(f"   ✅ 结果已保存到: {result_file}")
+    print(f"   OK: Results saved to {result_file}")
 except Exception as e:
-    print(f"   ❌ 保存结果失败: {e}")
+    print(f"   ERROR: {e}")
 
 # 6. 显示统计信息
 print()
 print("=" * 60)
-print("📊 预训练结果统计")
+print("Pretraining Results Summary")
 print("=" * 60)
 print()
-print(f"总文档数: {len(texts)}")
-print(f"发现的主题数: {len(np.unique(topics))}")
-print(f"噪声文档 (-1): {np.sum(topics == -1)}")
+print(f"Total documents: {len(texts)}")
+print(f"Discovered topics: {len(np.unique(topics))}")
+print(f"Noise documents (-1): {np.sum(topics == -1)}")
 print()
 
 # 显示主题信息
 topic_info = model.get_topic_info()
-print("主题分布:")
+print("Topic distribution:")
 print(topic_info[['Topic', 'Count', 'Name']].to_string(index=False))
 print()
 
 print("=" * 60)
-print("✅ 预训练完成！")
+print("OK: Pretraining complete!")
 print()
-print("📝 后续步骤:")
-print("   1. 将生成的 streamlit_app/data/bertopic_model/ 文件夹上传到GitHub")
-print("   2. 修改P7页面，改用预训练模型而不是每次重新训练")
-print("   3. P7页面会秒开，无需等待训练")
+print("Next steps:")
+print("   1. Upload streamlit_app/data/bertopic_model/ to GitHub")
+print("   2. git push origin main")
+print("   3. Wait 2-3 minutes for Streamlit Cloud to deploy")
+print("   4. P7 page will load instantly without training")
 print()
 print("=" * 60)
