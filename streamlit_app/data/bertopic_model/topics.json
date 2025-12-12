@@ -1,0 +1,12 @@
+{
+  "status": "pretraining_complete",
+  "num_topics": 4,
+  "num_documents": 2297,
+  "topics": [
+    {"id": 0, "name": "跨境电商_已关_增值税_财税知识", "count": 1835},
+    {"id": 1, "name": "税率_增值税_企业所得税_13", "count": 302},
+    {"id": 2, "name": "注册公司_你好_一般纳税人_财税知识", "count": 117},
+    {"id": 3, "name": "你好_已关_个体户开专票怎么交税_做跨境必须办理营业执照吗", "count": 43}
+  ],
+  "message": "BERTopic model pretraining completed successfully"
+}
