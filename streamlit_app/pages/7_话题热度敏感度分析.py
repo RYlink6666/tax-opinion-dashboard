@@ -266,182 +266,49 @@ st.info("""
 
 st.markdown("---")
 
-# 8. BERTopic深度主题分析（高级功能）
-st.subheader("8️⃣ 🤖 深度主题建模分析 (预计算结果)")
-st.write("使用AI预先提取文本中的隐藏主题关系")
+# 8️⃣ 简化版BERTopic - 只从JSON加载
+st.subheader("8️⃣ 🤖 深度主题建模分析")
+st.write("使用预先计算的隐藏主题")
 
-# 直接加载预计算的话题结果JSON（无需BERTopic库）
 import json
 from pathlib import Path
 
-pretrained_model_path = Path(__file__).parent.parent / "data" / "bertopic_model"
+result_file = Path(__file__).parent.parent / "data" / "bertopic_model" / "topics.json"
 
-if pretrained_model_path.exists():
-    # 加载预计算的话题结果
-    result_file = pretrained_model_path / "topics.json"
-    if result_file.exists():
-        try:
-            with open(result_file, 'r', encoding='utf-8') as f:
-                results = json.load(f)
-            
-            # 显示主题统计
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("发现的隐藏主题数", results['num_topics'])
-            
-            with col2:
-                max_count = max([t['count'] for t in results['topics']])
-                st.metric("最大主题", f"{max_count} 条")
-            
-            with col3:
-                st.metric("模型置信度", "高")
-            
-            st.markdown("---")
-            
-            # 简化显示：只显示主题列表
-            st.write("### 🔍 发现的隐藏主题")
-            
-            topics_df = pd.DataFrame([
-                {
-                    'ID': t['id'],
-                    '主题名': t['name'],
-                    '包含文档数': t['count'],
-                    '占比': f"{t['count']/results['num_documents']*100:.1f}%"
-                }
-                for t in results['topics']
-            ])
-            
-            st.dataframe(topics_df, use_container_width=True, hide_index=True)
-            
-            # 注释掉原有的Tab逻辑
-            if False:  # 禁用所有Tab
-                tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-                    "📊 主题分布",
-                    "📄 文档分布",
-                    "🔗 主题相似度",
-                    "📈 主题层级",
-                    "📝 主题列表",
-                    "🌳 主题分层",
-                    "📊 词频分布"
-                ])
-            
-            with tab1:
-                st.write("**主题在2D空间中的分布（Umap降维）**")
-                st.write("相近的点表示主题相似，可视化了数千条文本的隐藏结构")
-                viz = visualize_topics_2d(model, topics)
-                if viz:
-                    st.plotly_chart(viz, use_container_width=True)
-                else:
-                    st.info("主题分布可视化生成中...请稍候")
-            
-            with tab2:
-                st.write("**文档在2D空间中的分布**")
-                st.write("每个点代表一条文档，相近的文档讨论相似话题。可以看出文档聚集情况")
-                viz = visualize_documents_2d(model, texts, topics)
-                if viz:
-                    st.plotly_chart(viz, use_container_width=True)
-                else:
-                    st.info("文档分布可视化生成中...请稍候")
-            
-            with tab3:
-                st.write("**主题间的相似度热力图**")
-                st.write("热力图中的颜色深度表示主题间的相似程度")
-                viz = visualize_topic_similarity(model)
-                if viz:
-                    st.plotly_chart(viz, use_container_width=True)
-                else:
-                    st.info("相似度热力图生成中...请稍候")
-            
-            with tab4:
-                st.write("**主题的层级聚类关系**")
-                st.write("展示主题如何按相似性分组形成的树形结构")
-                viz = visualize_topic_hierarchy(model)
-                if viz:
-                    st.plotly_chart(viz, use_container_width=True)
-                else:
-                    st.info("层级关系图生成中...请稍候")
-            
-            with tab5:
-                st.write("**所有发现的隐藏主题列表**")
-                st.dataframe(
-                    topic_info[topic_info['Topic'] != -1][['Topic', 'Count', 'Name']],
-                    column_config={
-                        'Topic': st.column_config.NumberColumn('主题ID'),
-                        'Count': st.column_config.NumberColumn('包含文档数'),
-                        'Name': st.column_config.TextColumn('主题标签'),
-                    },
-                    hide_index=True,
-                    use_container_width=True
-                )
-            
-            with tab6:
-                st.write("**主题分层结构 - 每个话题下的具体文档**")
-                st.write("显示每个主题包含的代表性文档（最多前3条）")
-                
-                # 生成树形结构
-                tree_text = generate_topic_tree(model, df, topics)
-                
-                if tree_text:
-                    st.markdown(tree_text)
-                else:
-                    st.warning("无法生成主题分层结构")
-                
-                st.markdown("---")
-                
-                # 详细查看选项
-                st.write("**选择主题查看详细文档**")
-                
-                selected_topic = st.selectbox(
-                    "选择主题",
-                    options=topic_info[topic_info['Topic'] != -1]['Topic'].tolist(),
-                    format_func=lambda x: f"话题{int(x)}: {topic_info[topic_info['Topic']==x]['Name'].iloc[0]}"
-                )
-                
-                if selected_topic is not None:
-                    topic_docs = get_documents_by_topic(df, topics, selected_topic, top_n=10)
-                    
-                    if not topic_docs.empty:
-                        st.subheader(f"话题{int(selected_topic)}的文档列表")
-                        
-                        for idx, (_, doc) in enumerate(topic_docs.iterrows(), 1):
-                            with st.expander(f"📄 文档{idx}: {doc['source_text'][:50]}..."):
-                                st.write(f"**原文**: {doc['source_text']}")
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    st.write(f"**情感**: {translate_sentiment(doc['sentiment'])}")
-                                with col2:
-                                    st.write(f"**风险**: {translate_risk(doc['risk_level'])}")
-                    else:
-                        st.info("该主题下无文档")
-            
-            with tab7:
-                st.write("**各主题的词频分布（c-TF-IDF）**")
-                st.write("展示每个主题中最具代表性的词汇及其权重")
-                viz = visualize_term_distribution(model, top_n_topics=min(10, len(topic_info)-1))
-                if viz:
-                    st.plotly_chart(viz, use_container_width=True)
-                else:
-                    st.info("词频分布可视化生成中...请稍候")
-        else:
-            st.warning("⚠️ 无法提取主题，数据可能不足或格式不符")
-    else:
-        st.warning("⚠️ BERTopic模型初始化失败，跳过深度主题分析")
+if result_file.exists():
+    try:
+        with open(result_file, 'r', encoding='utf-8') as f:
+            results = json.load(f)
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("发现的隐藏主题数", results['num_topics'])
+        with col2:
+            max_count = max([t['count'] for t in results['topics']])
+            st.metric("最大主题", f"{max_count} 条")
+        with col3:
+            st.metric("模型置信度", "高")
+        
+        st.markdown("---")
+        st.write("### 🔍 发现的隐藏主题")
+        
+        topics_df = pd.DataFrame([
+            {
+                'ID': t['id'],
+                '主题名': t['name'],
+                '包含文档数': t['count'],
+                '占比': f"{t['count']/results['num_documents']*100:.1f}%"
+            }
+            for t in results['topics']
+        ])
+        
+        st.dataframe(topics_df, use_container_width=True, hide_index=True)
+        st.success("✅ 主题提取完成！")
+        
+    except Exception as e:
+        st.error(f"❌ 加载话题数据失败: {e}")
 else:
-    with st.expander("🤖 深度主题建模（需要安装BERTopic）"):
-        st.write("""
-        BERTopic是一种先进的主题建模技术，可以：
-        - 自动发现文本中的隐藏主题
-        - 建立主题间的层级关系
-        - 生成主题相似度热力图
-        
-        **安装BERTopic**:
-        ```bash
-        pip install -r requirements.txt
-        ```
-        
-        然后重启Streamlit应用即可启用此功能。
-        """)
+    st.warning("⚠️ 话题数据文件不存在")
 
 st.markdown("---")
 
