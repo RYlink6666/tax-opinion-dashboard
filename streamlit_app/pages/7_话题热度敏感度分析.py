@@ -305,6 +305,30 @@ if result_file.exists():
         st.dataframe(topics_df, use_container_width=True, hide_index=True)
         st.success("✅ 主题提取完成！")
         
+        # 显示层级关系（如果存在）
+        if 'hierarchy' in results and results['hierarchy']:
+            st.markdown("---")
+            st.write("### 🌳 主题层级关系")
+            
+            # 构建层级树显示
+            hierarchy = results['hierarchy']
+            topic_map = {t['id']: t['name'] for t in results['topics']}
+            
+            if hierarchy:
+                # 简单的文本树显示
+                st.write("**主题聚集情况：**")
+                for link in hierarchy:
+                    parent_id = link['parent']
+                    child_id = link['child']
+                    distance = link.get('distance', 0)
+                    
+                    parent_name = topic_map.get(parent_id, f"Cluster {parent_id}") if parent_id >= 0 else "Root"
+                    child_name = topic_map.get(child_id, f"Topic {child_id}")
+                    
+                    st.write(f"  └─ **{child_name}** → {parent_name} (距离: {distance:.3f})")
+            else:
+                st.info("ℹ️ 未发现层级关系（话题数量太少）")
+        
     except Exception as e:
         st.error(f"❌ 加载话题数据失败: {e}")
 else:

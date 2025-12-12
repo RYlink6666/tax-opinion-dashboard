@@ -106,27 +106,68 @@ except Exception as e:
     traceback.print_exc()
     sys.exit(1)
 
-# 5. 保存话题结果
+# 5. 生成层级结构
 print()
-print("5. Saving topic analysis results...")
+print("5. Generating topic hierarchy...")
 try:
+    # 获取层级关系（如果可用）
+    try:
+        hierarchical_topics = model.get_hierarchical_topics(texts, topics)
+        has_hierarchy = True
+        print("   OK: Hierarchical topics generated")
+    except:
+        hierarchical_topics = None
+        has_hierarchy = False
+        print("   INFO: Hierarchical topics unavailable (will use flat structure)")
+except Exception as e:
+    print(f"   WARNING: {e}")
+    hierarchical_topics = None
+    has_hierarchy = False
+
+# 6. 保存话题结果（包含层级）
+print()
+print("6. Saving topic analysis results...")
+try:
+    topic_info = model.get_topic_info()
+    
+    # 构建层级结构
+    hierarchy_list = []
+    if has_hierarchy and hierarchical_topics is not None:
+        for idx, row in hierarchical_topics.iterrows():
+            hierarchy_list.append({
+                'parent': int(row.get('Parent_ID', -1)) if 'Parent_ID' in row.columns else -1,
+                'child': int(row['Topic']),
+                'distance': float(row.get('Distance', 0)) if 'Distance' in row.columns else 0
+            })
+    
     results = {
-        'topics': topics.tolist(),
-        'probabilities': probs.tolist() if probs is not None else None,
-        'topic_info': model.get_topic_info().to_dict(orient='records'),
+        'status': 'pretraining_complete',
         'num_topics': len(np.unique(topics)),
-        'num_documents': len(texts)
+        'num_documents': len(texts),
+        'topics': [
+            {
+                'id': int(row['Topic']),
+                'name': row['Name'],
+                'count': int(row['Count']),
+                'keywords': row['Representation'][:5] if 'Representation' in topic_info.columns and isinstance(row['Representation'], list) else []
+            }
+            for _, row in topic_info.iterrows()
+        ],
+        'hierarchy': hierarchy_list,
+        'message': 'BERTopic model pretraining completed successfully'
     }
     
-    result_file = model_dir / "topics_result.json"
+    result_file = model_dir / "topics.json"
     with open(result_file, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
     
     print(f"   OK: Results saved to {result_file}")
 except Exception as e:
     print(f"   ERROR: {e}")
+    import traceback
+    traceback.print_exc()
 
-# 6. 显示统计信息
+# 7. 显示统计信息
 print()
 print("=" * 60)
 print("Pretraining Results Summary")
