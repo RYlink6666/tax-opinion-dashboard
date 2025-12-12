@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1400" height="1000" viewBox="0 0 1400 1000">
+  <!-- 背景 -->
+  <rect width="1400" height="1000" fill="white"/>
+  
+  <!-- 标题 -->
+  <text x="700" y="50" font-size="32" font-weight="bold" text-anchor="middle" font-family="SimHei, Arial">跨境电商舆论分析平台 - 系统架构</text>
+  <text x="700" y="85" font-size="18" text-anchor="middle" font-family="Arial" fill="#666666" font-style="italic">Cross-border E-commerce Opinion Analysis Platform</text>
+  
+  <!-- ==================== 应用层 ==================== -->
+  <!-- 应用层背景 -->
+  <rect x="70" y="120" width="1260" height="180" rx="15" fill="#E8F4F8" stroke="#0066CC" stroke-width="3"/>
+  
+  <!-- 应用层文字 -->
+  <text x="700" y="170" font-size="26" font-weight="bold" text-anchor="middle" font-family="SimHei">【应用层】可视化展示</text>
+  <text x="700" y="210" font-size="18" text-anchor="middle" font-family="SimHei" font-style="italic">Streamlit Web应用 | 9个分析页面 | 交互式仪表板</text>
+  <text x="700" y="250" font-size="16" text-anchor="middle" font-family="SimHei" fill="#555555">(展示LangExtract和BERTopic的所有分析输出)</text>
+  
+  <!-- ==================== 分析层 ==================== -->
+  <!-- 分析层背景 -->
+  <rect x="70" y="320" width="1260" height="420" rx="15" fill="#FFF4E6" stroke="#CC6600" stroke-width="3"/>
+  
+  <!-- 分析层标题 -->
+  <text x="700" y="370" font-size="26" font-weight="bold" text-anchor="middle" font-family="SimHei" fill="#333333">【分析层】AI智能分析 + 主题建模双引擎</text>
+  
+  <!-- LangExtract框 -->
+  <rect x="100" y="410" width="530" height="310" rx="10" fill="#FFE8E8" stroke="#CC0000" stroke-width="2"/>
+  
+  <text x="365" y="450" font-size="20" font-weight="bold" text-anchor="middle" font-family="SimHei" fill="#CC0000">【上游：LangExtract】</text>
+  <text x="365" y="480" font-size="14" text-anchor="middle" font-family="SimHei" fill="#666666" font-style="italic">(Google 2023)</text>
+  
+  <text x="365" y="530" font-size="16" text-anchor="middle" font-family="SimHei">✓ 5维度结构化分类</text>
+  <text x="365" y="560" font-size="16" text-anchor="middle" font-family="SimHei">✓ 提示工程+Few-shot</text>
+  <text x="365" y="590" font-size="16" text-anchor="middle" font-family="SimHei">✓ 精度 88.5%</text>
+  <text x="365" y="620" font-size="16" text-anchor="middle" font-family="SimHei">✓ JSON结构化输出</text>
+  <text x="365" y="650" font-size="14" text-anchor="middle" font-family="monospace" fill="#666666">{sentiment,pattern,risk,...}</text>
+  <text x="365" y="680" font-size="14" text-anchor="middle" font-family="SimHei" fill="#888888">输出：规范的结构化数据</text>
+  
+  <!-- BERTopic框 -->
+  <rect x="770" y="410" width="530" height="310" rx="10" fill="#E8F8E8" stroke="#009900" stroke-width="2"/>
+  
+  <text x="1035" y="450" font-size="20" font-weight="bold" text-anchor="middle" font-family="SimHei" fill="#009900">【下游：BERTopic】</text>
+  <text x="1035" y="480" font-size="14" text-anchor="middle" font-family="SimHei" fill="#666666" font-style="italic">(荷兰开源 2022)</text>
+  
+  <text x="1035" y="530" font-size="16" text-anchor="middle" font-family="SimHei">✓ 无监督主题发现</text>
+  <text x="1035" y="560" font-size="16" text-anchor="middle" font-family="SimHei">✓ BERT向量 + HDBSCAN</text>
+  <text x="1035" y="590" font-size="16" text-anchor="middle" font-family="SimHei">✓ 18个自动聚类话题</text>
+  <text x="1035" y="620" font-size="16" text-anchor="middle" font-family="SimHei">✓ 8个交互式可视化</text>
+  <text x="1035" y="680" font-size="14" text-anchor="middle" font-family="SimHei" fill="#888888">输出：话题结构与关键词</text>
+  
+  <!-- 协同箭头 -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#666666"/>
+    </marker>
+  </defs>
+  <line x1="640" y1="565" x2="760" y2="565" stroke="#666666" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+  <line x1="760" y1="565" x2="640" y2="565" stroke="#666666" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+  <text x="700" y="545" font-size="14" text-anchor="middle" font-family="SimHei" fill="#666666">协同应用</text>
+  
+  <!-- ==================== 数据层 ==================== -->
+  <!-- 数据层背景 -->
+  <rect x="70" y="760" width="1260" height="180" rx="15" fill="#F0F0F0" stroke="#666666" stroke-width="3"/>
+  
+  <!-- 数据层文字 -->
+  <text x="700" y="810" font-size="26" font-weight="bold" text-anchor="middle" font-family="SimHei">【数据层】采集与清洁</text>
+  <text x="700" y="850" font-size="18" text-anchor="middle" font-family="SimHei">MediaCrawler(3平台) | 99.3%去重率 | 2,297条清洁数据</text>
+  <text x="700" y="885" font-size="16" text-anchor="middle" font-family="SimHei" fill="#555555">微博×1,200条 + 知乎×900条 + 小红书×200条</text>
+  <text x="700" y="915" font-size="14" text-anchor="middle" font-family="SimHei" fill="#888888" font-style="italic">时间跨度：6个月（2025年6月-12月）</text>
+  
+  <!-- ==================== 数据流箭头 ==================== -->
+  <!-- 应用层 <- 分析层 -->
+  <defs>
+    <marker id="arrow_blue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#0066CC"/>
+    </marker>
+    <marker id="arrow_orange" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#CC6600"/>
+    </marker>
+  </defs>
+  
+  <!-- 应用层 → 分析层 -->
+  <line x1="700" y1="310" x2="700" y2="330" stroke="#0066CC" stroke-width="3" marker-end="url(#arrow_blue)"/>
+  
+  <!-- 分析层 → 数据层 -->
+  <line x1="700" y1="740" x2="700" y2="760" stroke="#CC6600" stroke-width="3" marker-end="url(#arrow_orange)"/>
+  
+  <!-- 左侧流程标签 -->
+  <text x="50" y="220" font-size="14" font-family="SimHei" fill="#0066CC" font-weight="bold">输出</text>
+  <text x="50" y="565" font-size="14" font-family="SimHei" fill="#CC6600" font-weight="bold">处理</text>
+  <text x="50" y="810" font-size="14" font-family="SimHei" fill="#009900" font-weight="bold">输入</text>
+</svg>
